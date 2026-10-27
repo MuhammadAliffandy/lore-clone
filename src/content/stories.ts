@@ -19,7 +19,7 @@ export const stories: Story[] = [
   {
     id: "kepler-supernova",
     title: "The star that appeared in daylight",
-    summary: "Johannes Kepler watched a new star blaze into view in 1604—and spent a year tracking its changes.",
+    summary: "Johannes Kepler watched a new star blaze into view in 1604, and spent a year tracking its changes.",
     body: [
       "On October 9, 1604, observers in Europe noticed a bright new point of light in the constellation Ophiuchus. Johannes Kepler began recording it a few days later.",
       "The object was a supernova: an exploding star far beyond the planets. Its brightness was so striking that people could see it in daylight for a short time.",

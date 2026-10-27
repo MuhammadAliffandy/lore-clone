@@ -77,11 +77,6 @@ function imageTextOverlap(caption: string, passage: string, title: string) {
   return matches >= 3 || (matches >= 2 && words.size <= 4) ? matches : 0;
 }
 
-function splitMicroPassage(passage: string) {
-  const sentences = Array.from(new Intl.Segmenter("en", { granularity: "sentence" }).segment(passage), (part) => part.segment.trim()).filter(Boolean);
-  return sentences.length > 1 ? { lead: sentences[0]!, detail: sentences.slice(1).join(" ") } : { lead: "", detail: passage };
-}
-
 function isViableFeedStory(story: Story) {
   return Boolean(story.imageUrl && story.title.length <= 72 && !/^(?:List|Timeline|Index|Outline) of\b/i.test(story.title));
 }
@@ -197,7 +192,7 @@ function App() {
 
   function skipStory(item: Story) {
     send({ type: "skip", storyId: item.id });
-    setNotice("Got it — we’ll tune your next read.");
+    setNotice("Got it, we’ll tune your next read.");
   }
 
   const visibleStories = (flow.screen === "feed" ? feed : catalog).filter((item) => activeFilter === "All" || item.topic === activeFilter);
@@ -415,7 +410,7 @@ function FeedStory({ story, active, state, onOpen, onLike, onSave, onSkip, onRel
       usedParagraphs.add(matched.paragraphIndex);
       slides.push({ image, fact: matched.text });
     }
-    return slides.map((slide) => ({ ...slide, ...splitMicroPassage(slide.fact) }));
+    return slides;
   }, [articleText, images, story.body, story.summary, story.title, story.imageUrl]);
   const activeFact = factSlides[imageIndex]?.fact ?? story.summary;
   const feedReadMinutes = Math.max(1, Math.ceil(factSlides.reduce((words, slide) => words + slide.fact.split(/\s+/).length, 0) / 180));
@@ -423,19 +418,53 @@ function FeedStory({ story, active, state, onOpen, onLike, onSave, onSkip, onRel
     const shareData = { title: story.title, text: activeFact, url: story.source.url };
     try {
       if (navigator.share) await navigator.share(shareData);
-      else { await navigator.clipboard?.writeText(`${story.title} — ${story.source.url}`); }
+      else { await navigator.clipboard?.writeText(`${story.title}: ${story.source.url}`); }
     } catch { /* sharing was dismissed or clipboard is unavailable */ }
   }
   return <article className={`feed-slide story-card story-card--${story.topic.toLowerCase()}`} data-story-id={story.id}>
     <div className="fact-panel-carousel" ref={carouselRef} onScroll={(event) => { const node = event.currentTarget; setImageIndex(Math.round(node.scrollLeft / node.clientWidth)); }} aria-label={`${story.title} fact slides`}>
-      {factSlides.map(({ image, lead, detail }, panelIndex) => <section className="feed-panel" key={`${image.url}-${panelIndex}`} aria-label={`Fact ${panelIndex + 1} of ${factSlides.length}`}>
-        <div className="feed-slide-media"><figure className="feed-image" aria-label={image.caption}><img src={image.url} alt={image.caption || story.imageAlt} loading={panelIndex === 0 ? "eager" : "lazy"}/></figure></div>
-        <div className="feed-slide-copy"><div className="feed-slide-heading"><TopicTag topic={story.topic}/><span className="feed-source">{story.source.label.split(" · ")[0]}</span></div><h2>{story.title}</h2>{lead && <p className="feed-learning-lead">{lead}</p>}<p className="feed-detail" key={panelIndex}>{detail}</p>
-          <div className="feed-slide-footer"><span className="story-meta"><Icon name="clock" size={14}/>{feedReadMinutes} min read</span><a href={story.source.url} target="_blank" rel="noreferrer">Source: Wikipedia</a></div>
-        </div>
-      </section>)}
+      {factSlides.map(({ image, fact }, panelIndex) => {
+        const isLead = panelIndex === 0;
+        let subtitle = isLead ? story.summary : "";
+        let bodyText = fact;
+        if (isLead && subtitle) {
+          const cleanSub = subtitle.trim().replace(/[.!?]+$/, "");
+          if (bodyText.toLowerCase().startsWith(cleanSub.toLowerCase())) {
+            const rest = bodyText.slice(cleanSub.length).replace(/^[.!?\s]+/, "").trim();
+            if (rest.length > 25) {
+              bodyText = rest;
+            }
+          }
+        }
+        return (
+          <section className="feed-panel" key={`${image.url}-${panelIndex}`} aria-label={`Fact ${panelIndex + 1} of ${factSlides.length}`}>
+            <div className="feed-panel-body">
+              {image.url && (
+                <figure className={`feed-image ${isLead ? "feed-image--lead" : "feed-image--subsequent"}`} aria-label={image.caption}>
+                  <img src={image.url} alt={image.caption || story.imageAlt} loading={isLead ? "eager" : "lazy"}/>
+                </figure>
+              )}
+              <div className="feed-panel-text">
+                <span className={`feed-topic-label topic-${TOPIC_TONES[story.topic]}`}>{story.topic}</span>
+                {isLead && <h2 className="feed-slide-title">{story.title}</h2>}
+                {isLead && subtitle && <p className="feed-slide-subtitle">{subtitle}</p>}
+                <p className="feed-fact-description">{bodyText}</p>
+              </div>
+              <div className="feed-slide-footer">
+                <span className="story-meta"><Icon name="clock" size={13}/>{feedReadMinutes} min read</span>
+                <a href={story.source.url} target="_blank" rel="noreferrer">Source: Wikipedia</a>
+              </div>
+            </div>
+          </section>
+        );
+      })}
     </div>
-    {factSlides.length > 1 && <><div className="image-count">{imageIndex + 1} <i>/</i> {factSlides.length}</div><div className="carousel-dots" aria-hidden="true">{factSlides.map((_, dot) => <i key={dot} className={dot === imageIndex ? "active" : ""}/>)}</div></>}
+    <div className="image-count">{imageIndex + 1}/{factSlides.length}</div>
+    {factSlides.length > 1 && (
+      <div className="carousel-dots" aria-hidden="true">
+        {factSlides.map((_, dot) => <i key={dot} className={dot === imageIndex ? "active" : ""}/>)}
+      </div>
+    )}
     <div className="feed-slide-actions feed-action-rail"><button className={`feed-rail-action ${state.likedIds.includes(story.id) ? "is-liked" : ""}`} aria-label={state.likedIds.includes(story.id) ? "Unlike story" : "Like story"} aria-pressed={state.likedIds.includes(story.id)} onClick={onLike}><Icon name="heart" size={27} filled={state.likedIds.includes(story.id)}/><span>Like</span></button><button className={`feed-rail-action ${state.savedIds.includes(story.id) ? "is-saved" : ""}`} aria-label={state.savedIds.includes(story.id) ? "Remove from saved" : "Save story"} aria-pressed={state.savedIds.includes(story.id)} onClick={onSave}><Icon name="bookmark" size={25} filled={state.savedIds.includes(story.id)}/><span>Save</span></button><button className="feed-rail-action" aria-label="Share fact" onClick={() => void shareStory()}><Icon name="share" size={25}/><span>Share</span></button><button className="feed-rail-action" aria-label="Explore related facts" onClick={onRelated}><Icon name="sparkle" size={25}/><span>Related</span></button><button className="feed-rail-action" aria-label="Skip this fact" onClick={onSkip}><Icon name="arrow-right" size={25}/><span>Next</span></button><button className="feed-rail-action" aria-label="Read more about this fact" onClick={onOpen}><span className="feed-more-dots">•••</span><span>More</span></button></div>
   </article>;
 }
@@ -550,7 +579,7 @@ function ExploreScreen({ catalog, preferredTopic, selectedGame, onSelect, onOpen
   if (selectedGame) {
     const question = questions[questionIndex];
     if (!question) return null;
-    return <div className="game-view math-game"><button className="back-button" onClick={() => onSelect(null)}><Icon name="arrow-left" size={18}/> Back to Explore</button><div className="quiz-card"><span className="quiz-progress">MATH BLITZ <span>{String(questionIndex + 1).padStart(2, "0")} / {String(questions.length).padStart(2, "0")}</span></span><div className="quiz-progress-track"><span style={{ width: `${((questionIndex + 1) / questions.length) * 100}%` }}/></div><span className="game-art"><span>＋</span></span><span className="eyebrow">TAKE A SECOND, TRUST YOUR INSTINCT</span><h1>{question.prompt} <i>= ?</i></h1><div className="quiz-options">{question.options.map((option, index) => <button key={option} className={choice === index ? (index === question.answer ? "correct" : "incorrect") : choice !== null && index === question.answer ? "correct-answer" : ""} disabled={choice !== null} onClick={() => { setChoice(index); if (index === question.answer) setScore((value) => value + 1); }}>{option}</button>)}</div>{choice !== null && <p className={`answer-note ${choice === question.answer ? "right" : "wrong"}`}>{choice === question.answer ? "That’s it. Keep going." : `Not quite — the answer is ${question.options[question.answer]}.`}</p>}<button className="primary-button quiz-next" disabled={choice === null} onClick={() => { if (questionIndex + 1 === questions.length) setFinished(true); else { setQuestionIndex((value) => value + 1); setChoice(null); } }}>{questionIndex + 1 === questions.length ? "See my score" : "Next sum"}<Icon name="arrow-right" size={16}/></button></div></div>;
+    return <div className="game-view math-game"><button className="back-button" onClick={() => onSelect(null)}><Icon name="arrow-left" size={18}/> Back to Explore</button><div className="quiz-card"><span className="quiz-progress">MATH BLITZ <span>{String(questionIndex + 1).padStart(2, "0")} / {String(questions.length).padStart(2, "0")}</span></span><div className="quiz-progress-track"><span style={{ width: `${((questionIndex + 1) / questions.length) * 100}%` }}/></div><span className="game-art"><span>＋</span></span><span className="eyebrow">TAKE A SECOND, TRUST YOUR INSTINCT</span><h1>{question.prompt} <i>= ?</i></h1><div className="quiz-options">{question.options.map((option, index) => <button key={option} className={choice === index ? (index === question.answer ? "correct" : "incorrect") : choice !== null && index === question.answer ? "correct-answer" : ""} disabled={choice !== null} onClick={() => { setChoice(index); if (index === question.answer) setScore((value) => value + 1); }}>{option}</button>)}</div>{choice !== null && <p className={`answer-note ${choice === question.answer ? "right" : "wrong"}`}>{choice === question.answer ? "That’s it. Keep going." : `Not quite, the answer is ${question.options[question.answer]}.`}</p>}<button className="primary-button quiz-next" disabled={choice === null} onClick={() => { if (questionIndex + 1 === questions.length) setFinished(true); else { setQuestionIndex((value) => value + 1); setChoice(null); } }}>{questionIndex + 1 === questions.length ? "See my score" : "Next sum"}<Icon name="arrow-right" size={16}/></button></div></div>;
   }
   return <div className="explore-page"><div className="page-intro"><span className="eyebrow">FOLLOW YOUR CURIOSITY</span><h1>There’s always<br/><em>more to discover.</em></h1><p>Pick up a new thread, or give your brain a little playful stretch.</p></div><section className="explore-feature"><div className="feature-art"><span>✳</span><i>•</i><b>✦</b></div><div className="explore-feature-copy"><span className="eyebrow">A SMALL MOMENT, A BIGGER WORLD</span><h2>Wander a little further.</h2><p>Curated stories take you from familiar ideas to new perspectives.</p><button className="text-link" onClick={() => onOpenStory(catalog[1] ?? catalog[0] ?? stories[0]!)}>Find your next read <Icon name="arrow-right" size={15}/></button></div></section><section className="wiki-section"><div className="section-heading"><div><span className="eyebrow">A WINDOW INTO WIKIPEDIA</span><h2>Follow a question</h2></div><span className="subtle-count">Live article search</span></div><label className="wiki-search"><Icon name="compass" size={19}/><input type="search" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Try ‘deep sea’, ‘silk road’…" aria-label="Search Wikipedia articles"/><kbd>↵</kbd></label><p className="wiki-hint">Search a subject and open a short, attributed summary.</p>{wikiLoading && <p className="wiki-status" role="status">Looking for a good thread…</p>}{wikiError && <p className="wiki-error" role="alert">{wikiError}</p>}{!wikiLoading && query.trim().length >= 2 && !wikiError && wikiResults.length === 0 && <p className="wiki-status">No articles found. Try a broader search.</p>}{wikiResults.length > 0 && <div className="wiki-results">{wikiResults.map((result) => <button className="wiki-result" key={result.key} onClick={() => void openWikiPage(result)} disabled={Boolean(openingTitle)}><span className="wiki-result-image">{result.thumbnail?.url ? <img src={result.thumbnail.url} alt=""/> : <Icon name="book" size={20}/>}</span><span className="wiki-result-copy"><strong>{result.title}</strong><small>{result.description ?? result.excerpt?.replace(/<[^>]*>/g, "") ?? "Open a short article summary"}</small></span><span className="row-arrow">{openingTitle === result.title ? "…" : <Icon name="arrow-right" size={16}/>}</span></button>)}</div>}</section><section className="games-section"><div className="section-heading"><div><span className="eyebrow">PLAY WITH WHAT YOU KNOW</span><h2>Little brain breaks</h2></div><span className="subtle-count">A quick round</span></div><div className="games-grid">{games.map((game) => <button key={game.name} className={`game-card game-${game.color}`} onClick={() => onSelect(game.name)}><span className="game-symbol">{game.symbol}</span><span className="game-card-copy"><strong>{game.name}</strong><small>{game.description}</small></span><span className="game-play"><Icon name="play" size={12}/></span></button>)}</div></section><section className="topic-explore"><div className="section-heading"><div><span className="eyebrow">A FEW OPEN TABS</span><h2>Stories to get lost in</h2></div></div><div className="mini-story-list">{catalog.slice(0, 3).map((item) => <StoryRow key={item.id} story={item} onClick={() => onOpenStory(item)}/>)}</div></section></div>;
 }

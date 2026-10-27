@@ -40,3 +40,14 @@ Dokumen ini berlaku untuk seluruh repo. Tujuan proyek adalah merekonstruksi peng
 3. Jalankan `npm run build` dan `git diff --check`. Untuk UI, cek manual di browser pada ponsel, swipe horizontal dan vertikal, tema terang/gelap, serta beberapa artikel nyata dari Wikipedia. Tambah pengujian otomatis bila ada risiko perilaku yang tidak cukup terverifikasi dengan build dan pemeriksaan manual.
 4. Jalankan lokal dengan `npm run dev` (Vite biasanya port 5173, API port 8787; sesi preview yang sudah terbuka bisa memakai port lain). Jangan mengasumsikan port tertentu tanpa memeriksa proses yang berjalan.
 5. Perbarui dokumentasi bila kontrak produk, endpoint, atau batas layanan berubah. Jaga repo `main` siap dibangun untuk Vercel; push perubahan setelah diminta atau bila sudah tercakup otorisasi pengguna dalam tugas yang sedang berjalan.
+
+<!-- antislop:start -->
+## antislop
+For UI, copy, people, mobile layout, or code comments work, read `antislop.md` (core) and then the skill for the task:
+- UI / visual: `skills/antislop-ui/SKILL.md`
+- Copy & text: `skills/antislop-copywriting/SKILL.md`
+- People: `skills/antislop-human/SKILL.md`
+- Mobile / responsive: `skills/antislop-layoutmobile/SKILL.md`
+- Code comments: `skills/antislop-code/SKILL.md`
+Before starting, ask the user when antislop applies: during the work, or after it is done.
+<!-- antislop:end -->
