@@ -1,4 +1,5 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
+import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
 import { loadEnvFile } from "node:process";
@@ -88,7 +89,7 @@ async function saveReaderState(value: unknown) {
     return state;
   }
   await mkdir(dirname(stateFile), { recursive: true });
-  const temporary = `${stateFile}.tmp`;
+  const temporary = `${stateFile}.${process.pid}.${randomUUID()}.tmp`;
   await writeFile(temporary, JSON.stringify(state, null, 2), "utf8");
   await rename(temporary, stateFile);
   return state;
