@@ -335,7 +335,7 @@ function FeedScreen({ stories: _stories, allStories: _allStories, preferredTopic
   </div>;
 }
 
-function FeedStory({ story, index, active, state, onOpen, onLike, onSave, onSkip, onRelated }: { story: Story; index: number; active: boolean; state: ReaderState; onOpen: () => void; onLike: () => void; onSave: () => void; onSkip: () => void; onRelated: () => void }) {
+function FeedStory({ story, active, state, onOpen, onLike, onSave, onSkip, onRelated }: { story: Story; index?: number; active: boolean; state: ReaderState; onOpen: () => void; onLike: () => void; onSave: () => void; onSkip: () => void; onRelated: () => void }) {
   const [images, setImages] = useState(story.galleryImages?.length ? story.galleryImages : [{ url: story.imageUrl, caption: story.title }]);
   const [imageIndex, setImageIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -350,11 +350,6 @@ function FeedStory({ story, index, active, state, onOpen, onLike, onSave, onSkip
     }).catch(() => undefined);
     return () => controller.abort();
   }, [active, story.id, story.title, story.imageUrl]);
-  function moveImage(direction: number) {
-    const next = Math.max(0, Math.min(images.length - 1, imageIndex + direction));
-    carouselRef.current?.children[next]?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
-    setImageIndex(next);
-  }
   const factSlides = useMemo(() => {
     const text = [...story.body, story.summary].join(" ").replace(/\s+/g, " ");
     const sentences = text.match(/[^.!?]+[.!?]+(?=\s|$)/g)?.map((sentence) => sentence.trim()) ?? [];
@@ -376,7 +371,6 @@ function FeedStory({ story, index, active, state, onOpen, onLike, onSave, onSkip
     });
   }, [images, story.body, story.summary, story.title]);
   const activeFact = factSlides[imageIndex]?.fact ?? story.summary;
-  const articleContext = activeFact === story.summary ? "" : activeFact;
   async function shareStory() {
     const shareData = { title: story.title, text: activeFact, url: story.source.url };
     try {
@@ -385,16 +379,16 @@ function FeedStory({ story, index, active, state, onOpen, onLike, onSave, onSkip
     } catch { /* sharing was dismissed or clipboard is unavailable */ }
   }
   return <article className={`feed-slide story-card story-card--${story.topic.toLowerCase()}`} data-story-id={story.id}>
-    <div className="feed-slide-media"><div className="feed-carousel" ref={carouselRef} onScroll={(event) => { const node = event.currentTarget; setImageIndex(Math.round(node.scrollLeft / node.clientWidth)); }} aria-label={`${story.title} images`}>
-      {factSlides.map(({ image }, imagePosition) => <figure className="feed-image" key={`${image.url}-${imagePosition}`}><img src={image.url} alt={image.caption || story.imageAlt} loading={imagePosition === 0 ? "eager" : "lazy"}/><figcaption>{image.caption}</figcaption></figure>)}
-    </div><span className="image-gradient"/><span className="image-badge"><Icon name="sparkle" size={13}/> FACT {String(index + 1).padStart(2, "0")}</span>
-      {factSlides.length > 1 && <><div className="image-count">{imageIndex + 1} <i>/</i> {factSlides.length}</div><button className="carousel-arrow carousel-prev" aria-label="Previous photo and fact" onClick={() => moveImage(-1)} disabled={imageIndex === 0}><Icon name="arrow-left" size={18}/></button><button className="carousel-arrow carousel-next" aria-label="Next photo and fact" onClick={() => moveImage(1)} disabled={imageIndex === factSlides.length - 1}><Icon name="arrow-right" size={18}/></button><div className="carousel-dots" aria-hidden="true">{factSlides.map((_, dot) => <i key={dot} className={dot === imageIndex ? "active" : ""}/>)}</div></>}
-      <span className="feed-swipe-hint">Swipe for more photos</span>
+    <div className="fact-panel-carousel" ref={carouselRef} onScroll={(event) => { const node = event.currentTarget; setImageIndex(Math.round(node.scrollLeft / node.clientWidth)); }} aria-label={`${story.title} fact slides`}>
+      {factSlides.map(({ image, fact }, panelIndex) => <section className="feed-panel" key={`${image.url}-${panelIndex}`} aria-label={`Fact ${panelIndex + 1} of ${factSlides.length}`}>
+        <div className="feed-slide-media"><figure className="feed-image"><img src={image.url} alt={image.caption || story.imageAlt} loading={panelIndex === 0 ? "eager" : "lazy"}/><figcaption>{image.caption}</figcaption></figure><span className="image-gradient"/><span className="image-badge"><Icon name="sparkle" size={13}/> {story.topic.toUpperCase()}</span></div>
+        <div className="feed-slide-copy"><div className="feed-slide-heading"><TopicTag topic={story.topic}/><span className="feed-source">{story.source.label.split(" · ")[0]}</span></div><h2>{story.title}</h2><p className="feed-fact">{story.summary}</p><p className="feed-detail" key={panelIndex}>{fact}</p>
+          <div className="feed-slide-footer"><span className="story-meta"><Icon name="clock" size={14}/>{story.readMinutes} min read</span><a href={story.source.url} target="_blank" rel="noreferrer">Source: Wikipedia</a></div>
+        </div>
+      </section>)}
     </div>
-    <div className="feed-slide-copy"><div className="feed-slide-heading"><TopicTag topic={story.topic}/><span className="feed-source">{story.source.label.split(" · ")[0]}</span></div><h2>{story.title}</h2><p className="feed-fact">{story.summary}</p>{articleContext && <p className="feed-detail" key={imageIndex}>{articleContext}</p>}
-      <div className="feed-slide-footer"><span className="story-meta"><Icon name="clock" size={14}/>{story.readMinutes} min read</span><a href={story.source.url} target="_blank" rel="noreferrer">Source: Wikipedia</a></div>
-      <div className="feed-slide-actions feed-action-rail"><button className={`feed-rail-action ${state.likedIds.includes(story.id) ? "is-liked" : ""}`} aria-label={state.likedIds.includes(story.id) ? "Unlike story" : "Like story"} aria-pressed={state.likedIds.includes(story.id)} onClick={onLike}><Icon name="heart" size={27} filled={state.likedIds.includes(story.id)}/><span>Like</span></button><button className={`feed-rail-action ${state.savedIds.includes(story.id) ? "is-saved" : ""}`} aria-label={state.savedIds.includes(story.id) ? "Remove from saved" : "Save story"} aria-pressed={state.savedIds.includes(story.id)} onClick={onSave}><Icon name="bookmark" size={25} filled={state.savedIds.includes(story.id)}/><span>Save</span></button><button className="feed-rail-action" aria-label="Share fact" onClick={() => void shareStory()}><Icon name="share" size={25}/><span>Share</span></button><button className="feed-rail-action" aria-label="Explore related facts" onClick={onRelated}><Icon name="sparkle" size={25}/><span>Related</span></button><button className="feed-rail-action" aria-label="Skip this fact" onClick={onSkip}><Icon name="arrow-right" size={25}/><span>Next</span></button><button className="feed-rail-action" aria-label="Read more about this fact" onClick={onOpen}><span className="feed-more-dots">•••</span><span>More</span></button></div>
-    </div>
+    {factSlides.length > 1 && <><div className="image-count">{imageIndex + 1} <i>/</i> {factSlides.length}</div><div className="carousel-dots" aria-hidden="true">{factSlides.map((_, dot) => <i key={dot} className={dot === imageIndex ? "active" : ""}/>)}</div></>}
+    <div className="feed-slide-actions feed-action-rail"><button className={`feed-rail-action ${state.likedIds.includes(story.id) ? "is-liked" : ""}`} aria-label={state.likedIds.includes(story.id) ? "Unlike story" : "Like story"} aria-pressed={state.likedIds.includes(story.id)} onClick={onLike}><Icon name="heart" size={27} filled={state.likedIds.includes(story.id)}/><span>Like</span></button><button className={`feed-rail-action ${state.savedIds.includes(story.id) ? "is-saved" : ""}`} aria-label={state.savedIds.includes(story.id) ? "Remove from saved" : "Save story"} aria-pressed={state.savedIds.includes(story.id)} onClick={onSave}><Icon name="bookmark" size={25} filled={state.savedIds.includes(story.id)}/><span>Save</span></button><button className="feed-rail-action" aria-label="Share fact" onClick={() => void shareStory()}><Icon name="share" size={25}/><span>Share</span></button><button className="feed-rail-action" aria-label="Explore related facts" onClick={onRelated}><Icon name="sparkle" size={25}/><span>Related</span></button><button className="feed-rail-action" aria-label="Skip this fact" onClick={onSkip}><Icon name="arrow-right" size={25}/><span>Next</span></button><button className="feed-rail-action" aria-label="Read more about this fact" onClick={onOpen}><span className="feed-more-dots">•••</span><span>More</span></button></div>
   </article>;
 }
 

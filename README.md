@@ -6,7 +6,7 @@ Rekonstruksi pengalaman **Lore: Daily Facts & Learning**, dengan layar HP sebaga
 
 - Onboarding minat, feed fakta vertikal dengan infinite loading, reader, bookmark/like, profil, dan Math Blitz.
 - Feed mobile memakai pola For You: satu fakta per layar, snap saat scroll vertikal, serta rail Like, Save, Share, Related, Next, dan More.
-- Swipe foto bergerak horizontal di dalam sebuah fakta; setiap foto dipasangkan dengan kalimat fakta berbeda dan teks ikut berubah saat foto berganti.
+- Swipe horizontal memindahkan panel utuh berisi foto, judul, konteks, dan bacaan faktanya sekaligus; scroll vertikal berpindah ke topik rekomendasi berikutnya.
 - Feed mengambil halaman bergambar dari Wikipedia berdasarkan minat, mengacak kelompok query saat sesi dimulai, menyimpan cache kandidat lokal, dan mengurangi rekomendasi yang sudah dibaca atau dilewati.
 - Cerita contoh tidak dicampur ke feed live. Hasil tanpa gambar utama dilewati supaya setiap kartu rekomendasi punya foto yang relevan dan tautan sumber.
 - Tema gelap dapat diubah dari header dan tersimpan di browser.
