@@ -142,21 +142,19 @@ async function discoverPages(query: string, limit: number, offset: number) {
 function toStory(page: WikiPage, topic: Topic) {
   const extract = page.extract?.trim() ?? "";
   const body = extract.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean).slice(0, 4);
-  if (!page.pageid || !page.title || !extract || extract.length < 80) return null;
+  if (!page.pageid || !page.title || !extract || extract.length < 80 || !page.thumbnail?.source) return null;
   const sentences = extract.replace(/\s+/g, " ").match(/[^.!?]+[.!?]+(?=\s|$)/g)?.map((sentence) => sentence.trim()) ?? [];
-  const factSentence = sentences.slice(1).find((sentence) => sentence.length >= 40 && sentence.length <= 260 && /\b(only|first|oldest|largest|smallest|youngest|record|discovered|invented|never|once|more than|less than)\b|\b\d{3,}\b/i.test(sentence));
   const firstSentence = sentences[0];
-  const fallbackImage = "https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1200&q=85";
   return {
     id: `wiki-${page.pageid}`,
     title: page.title,
-    summary: factSentence ?? firstSentence ?? body[0]?.slice(0, 250) ?? extract.slice(0, 250),
+    summary: firstSentence ?? body[0]?.slice(0, 250) ?? extract.slice(0, 250),
     body: body.length ? body : [extract],
     topic,
     readMinutes: Math.max(1, Math.ceil(extract.split(/\s+/).length / 190)),
-    imageUrl: page.thumbnail?.source ?? fallbackImage,
+    imageUrl: page.thumbnail.source,
     imageAlt: `Photo and illustration for ${page.title}`,
-    galleryImages: [{ url: page.thumbnail?.source ?? fallbackImage, caption: page.title }],
+    galleryImages: [{ url: page.thumbnail.source, caption: page.title }],
     source: {
       label: `Wikipedia · ${page.title}`,
       url: page.fullurl ?? `https://en.wikipedia.org/wiki/${encodeURIComponent(page.title.replaceAll(" ", "_"))}`,

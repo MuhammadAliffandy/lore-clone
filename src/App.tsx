@@ -46,7 +46,7 @@ function TopicTag({ topic }: { topic: Topic }) {
 }
 
 function App() {
-  const [theme, setTheme] = useState<"light" | "dark">(() => window.localStorage.getItem("lore-clone.theme") === "dark" ? "dark" : "light");
+  const [theme, setTheme] = useState<"light" | "dark">(() => window.localStorage.getItem("lore-clone.theme") === "light" ? "light" : "dark");
   const [didOnboard, setDidOnboard] = useState(() => window.localStorage.getItem("lore-clone.onboarded") === "yes");
   const [reader, setReader] = useState<ReaderState>(() => {
     const loaded = loadReaderState();
@@ -176,7 +176,7 @@ function App() {
         </div>
       </aside>}
       <div className="app-main">
-        {flow.screen !== "onboarding" && flow.screen !== "reader" && <header className="topbar">
+        {flow.screen !== "onboarding" && flow.screen !== "reader" && <header className={`topbar topbar-${flow.screen}`}>
           <div className="mobile-brand"><span className="brand-mark"><span /></span><span>lore</span></div>
           <div className="topbar-context"><span className="topbar-eyebrow">A LITTLE MORE CURIOUS, EVERY DAY</span><strong>{title}</strong></div>
           <div className="topbar-right"><button className="icon-button theme-toggle" aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`} title={`${theme === "light" ? "Dark" : "Light"} mode`} aria-pressed={theme === "dark"} onClick={() => setTheme((value) => value === "light" ? "dark" : "light")}><Icon name="sun" size={18}/></button><button className="avatar avatar-button" aria-label="Open your profile" onClick={() => navigate("profile")}>A</button></div>
@@ -208,7 +208,7 @@ function Onboarding({ selected, onToggle, onContinue }: { selected: Topic[]; onT
   </section>;
 }
 
-function FeedScreen({ stories: fallbackStories, allStories: _allStories, preferredTopics, state, activeFilter, onFilter, onOpen, onLike, onSave, onSkip, onExplore }: { stories: Story[]; allStories: Story[]; preferredTopics: Topic[]; state: ReaderState; activeFilter: Topic | "All"; onFilter: (topic: Topic | "All") => void; onOpen: (story: Story) => void; onLike: (story: Story) => void; onSave: (story: Story) => void; onSkip: (story: Story) => void; onExplore: () => void }) {
+function FeedScreen({ stories: _stories, allStories: _allStories, preferredTopics, state, activeFilter, onFilter, onOpen, onLike, onSave, onSkip, onExplore }: { stories: Story[]; allStories: Story[]; preferredTopics: Topic[]; state: ReaderState; activeFilter: Topic | "All"; onFilter: (topic: Topic | "All") => void; onOpen: (story: Story) => void; onLike: (story: Story) => void; onSave: (story: Story) => void; onSkip: (story: Story) => void; onExplore: () => void }) {
   const topics = activeFilter === "All" ? preferredTopics : [activeFilter];
   const [items, setItems] = useState<Story[]>([]);
   const [loading, setLoading] = useState(false);
@@ -221,18 +221,47 @@ function FeedScreen({ stories: fallbackStories, allStories: _allStories, preferr
   const exhausted = useRef(new Set<string>());
   const position = useRef(0);
   const seen = useRef(new Set<string>());
+  const known = useRef(new Set<string>());
+  const cachedStories = useRef<Story[]>([]);
   const loadingRef = useRef(false);
   const generation = useRef(0);
   const topicsRef = useRef(topics);
-  const fallbackRef = useRef(fallbackStories);
   topicsRef.current = topics;
-  fallbackRef.current = fallbackStories;
   const topicKey = topics.join("|");
+
+  function rememberSeen(storyId: string) {
+    seen.current.add(storyId);
+    try { window.localStorage.setItem("lore-clone.seen-stories", JSON.stringify([...seen.current].slice(-300))); } catch { /* browser storage may be unavailable */ }
+  }
 
   useEffect(() => {
     generation.current += 1;
     setItems([]); setError(""); setHasMore(true); setActiveId("");
-    offsets.current = {}; exhausted.current = new Set(); position.current = 0; seen.current = new Set(); loadingRef.current = false;
+    let rotations: Record<string, number> = {};
+    try { rotations = JSON.parse(window.localStorage.getItem("lore-clone.query-rotation") ?? "{}"); } catch { rotations = {}; }
+    offsets.current = Object.fromEntries(topics.map((topic) => {
+      const previous = rotations[topic];
+      let selected = Math.floor(Math.random() * 4);
+      if (selected === previous) selected = (selected + 1 + Math.floor(Math.random() * 3)) % 4;
+      rotations[topic] = selected;
+      return [topic, selected * 1000];
+    }));
+    try { window.localStorage.setItem("lore-clone.query-rotation", JSON.stringify(rotations)); } catch { /* rotation memory is optional */ }
+    exhausted.current = new Set(); position.current = 0;
+    try { seen.current = new Set([...JSON.parse(window.localStorage.getItem("lore-clone.seen-stories") ?? "[]") as string[], ...state.completedIds, ...state.skippedIds]); }
+    catch { seen.current = new Set(); }
+    known.current = new Set(seen.current);
+    cachedStories.current = [];
+    try {
+      const cached = JSON.parse(window.localStorage.getItem(`lore-clone.feed-cache:${topicKey}`) ?? "null") as { savedAt?: number; items?: Story[] } | null;
+      if (cached?.savedAt && Date.now() - cached.savedAt < 30 * 60_000 && Array.isArray(cached.items)) {
+        cachedStories.current = cached.items;
+        const fresh = cached.items.filter((item) => !seen.current.has(item.id));
+        fresh.forEach((item) => known.current.add(item.id));
+        setItems(fresh.slice(0, 20));
+      }
+    } catch { /* an invalid local cache is ignored */ }
+    loadingRef.current = false;
     scrollRef.current?.scrollTo({ top: 0 });
   }, [topicKey]);
 
@@ -255,18 +284,17 @@ function FeedScreen({ stories: fallbackStories, allStories: _allStories, preferr
         if (!response.ok) throw new Error(data.error ?? "Could not load facts from Wikipedia.");
         offsets.current[topic] = data.nextOffset ?? offset + (data.items?.length ?? 7);
         if (data.nextOffset == null) exhausted.current.add(topic);
-        for (const story of data.items ?? []) if (!seen.current.has(story.id)) { seen.current.add(story.id); batch.push(story); }
+        for (const story of data.items ?? []) if (!known.current.has(story.id)) { known.current.add(story.id); batch.push(story); }
       }
-      if (batch.length) setItems((current) => [...current, ...batch]);
-      else if (topicsRef.current.every((topic) => exhausted.current.has(topic))) {
-        const remaining = fallbackRef.current.filter((item) => !seen.current.has(item.id));
-        remaining.forEach((item) => seen.current.add(item.id));
-        if (remaining.length) setItems((current) => [...current, ...remaining]);
-        else setHasMore(false);
+      if (batch.length) {
+        cachedStories.current = [...cachedStories.current, ...batch].filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index).slice(-40);
+        try { window.localStorage.setItem(`lore-clone.feed-cache:${topicKey}`, JSON.stringify({ savedAt: Date.now(), items: cachedStories.current })); } catch { /* cache is optional */ }
+        setItems((current) => [...current, ...batch]);
       }
+      else if (topicsRef.current.every((topic) => exhausted.current.has(topic))) setHasMore(false);
     } catch (reason) { if (requestGeneration === generation.current) setError(reason instanceof Error ? reason.message : "Feed could not load."); }
     finally { if (requestGeneration === generation.current) { loadingRef.current = false; setLoading(false); } }
-  }, []);
+  }, [topicKey]);
 
   useEffect(() => { void loadMore(); }, [loadMore, topicKey]);
   useEffect(() => {
@@ -286,10 +314,18 @@ function FeedScreen({ stories: fallbackStories, allStories: _allStories, preferr
     return () => observer.disconnect();
   }, [items]);
 
+  useEffect(() => {
+    if (!activeId) return;
+    const timer = window.setTimeout(() => {
+      rememberSeen(activeId);
+    }, 1400);
+    return () => window.clearTimeout(timer);
+  }, [activeId]);
+
   const today = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
   return <div className="feed-layout doom-feed"><div className="feed-intro"><div><span className="eyebrow date-eyebrow">{today.toUpperCase()}</span><h1>A fresh little <em>discovery.</em></h1><p>Scroll into something new. One small fact at a time.</p></div><div className="daily-progress"><span className="progress-ring"><span>✳</span></span><div><strong>{state.completedIds.length} stories</strong><small>read in total</small></div></div></div>
     <div className="filter-row" role="tablist" aria-label="Filter stories by topic">{["All", ...TOPICS].map((topic) => <button key={topic} role="tab" aria-selected={activeFilter === topic} className={`filter-chip ${activeFilter === topic ? "active" : ""}`} onClick={() => onFilter(topic as Topic | "All")}>{topic}</button>)}</div>
-    <div className="feed-scroll" ref={scrollRef} aria-label="Endless fact feed">{items.map((item, index) => <FeedStory key={`${topicKey}-${item.id}`} story={item} index={index} active={activeId === item.id || (!activeId && index === 0)} state={state} onOpen={() => onOpen(item)} onLike={() => onLike(item)} onSave={() => onSave(item)} onSkip={() => { onSkip(item); const next = scrollRef.current?.querySelectorAll<HTMLElement>("[data-story-id]")[index + 1]; next?.scrollIntoView({ behavior: "smooth", block: "start" }); if (!next) void loadMore(); }}/>)}
+    <div className="feed-scroll" ref={scrollRef} aria-label="Endless fact feed">{items.map((item, index) => <FeedStory key={`${topicKey}-${item.id}`} story={item} index={index} active={activeId === item.id || (!activeId && index === 0)} state={state} onOpen={() => onOpen(item)} onLike={() => onLike(item)} onSave={() => onSave(item)} onRelated={onExplore} onSkip={() => { rememberSeen(item.id); onSkip(item); const next = scrollRef.current?.querySelectorAll<HTMLElement>("[data-story-id]")[index + 1]; next?.scrollIntoView({ behavior: "smooth", block: "start" }); if (!next) void loadMore(); }}/>)}
       <div ref={sentinelRef} className="feed-sentinel" aria-hidden="true"/>
       {loading && <div className="feed-state" role="status">Finding another fact…</div>}
       {error && <div className="feed-state feed-error" role="alert"><span>{error}</span><button className="secondary-button" onClick={() => void loadMore()}>Try again</button></div>}
@@ -299,7 +335,7 @@ function FeedScreen({ stories: fallbackStories, allStories: _allStories, preferr
   </div>;
 }
 
-function FeedStory({ story, index, active, state, onOpen, onLike, onSave, onSkip }: { story: Story; index: number; active: boolean; state: ReaderState; onOpen: () => void; onLike: () => void; onSave: () => void; onSkip: () => void }) {
+function FeedStory({ story, index, active, state, onOpen, onLike, onSave, onSkip, onRelated }: { story: Story; index: number; active: boolean; state: ReaderState; onOpen: () => void; onLike: () => void; onSave: () => void; onSkip: () => void; onRelated: () => void }) {
   const [images, setImages] = useState(story.galleryImages?.length ? story.galleryImages : [{ url: story.imageUrl, caption: story.title }]);
   const [imageIndex, setImageIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
@@ -319,17 +355,45 @@ function FeedStory({ story, index, active, state, onOpen, onLike, onSave, onSkip
     carouselRef.current?.children[next]?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
     setImageIndex(next);
   }
-  const articleContext = story.body[0]?.replace(story.summary, "").replace(/\s+/g, " ").trim();
+  const factSlides = useMemo(() => {
+    const text = [...story.body, story.summary].join(" ").replace(/\s+/g, " ");
+    const sentences = text.match(/[^.!?]+[.!?]+(?=\s|$)/g)?.map((sentence) => sentence.trim()) ?? [];
+    const summaryKey = story.summary.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+    const candidates = sentences.filter((sentence) => {
+      const key = sentence.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+      return key && key !== summaryKey && sentence.length >= 48 && sentence.length <= 360;
+    });
+    const remaining = [...candidates];
+    return images.flatMap((image, imagePosition) => {
+      if (!remaining.length) return imagePosition === 0 ? [{ image, fact: story.summary }] : [];
+      const captionWords = new Set((image.caption + " " + story.title).toLocaleLowerCase().match(/[a-z0-9]{4,}/g) ?? []);
+      const stopWords = new Set(["that", "this", "with", "from", "into", "were", "their", "there", "about", "which", "when", "what", "have", "been", "also", "only"]);
+      const score = (sentence: string) => (sentence.toLocaleLowerCase().match(/[a-z0-9]{4,}/g) ?? []).reduce((total, word) => total + (!stopWords.has(word) && captionWords.has(word) ? 1 : 0), 0);
+      let best = 0;
+      for (let index = 1; index < remaining.length; index += 1) if (score(remaining[index]!) > score(remaining[best]!)) best = index;
+      const fact = remaining.splice(best, 1)[0];
+      return fact ? [{ image, fact }] : [];
+    });
+  }, [images, story.body, story.summary, story.title]);
+  const activeFact = factSlides[imageIndex]?.fact ?? story.summary;
+  const articleContext = activeFact === story.summary ? "" : activeFact;
+  async function shareStory() {
+    const shareData = { title: story.title, text: activeFact, url: story.source.url };
+    try {
+      if (navigator.share) await navigator.share(shareData);
+      else { await navigator.clipboard?.writeText(`${story.title} — ${story.source.url}`); }
+    } catch { /* sharing was dismissed or clipboard is unavailable */ }
+  }
   return <article className={`feed-slide story-card story-card--${story.topic.toLowerCase()}`} data-story-id={story.id}>
     <div className="feed-slide-media"><div className="feed-carousel" ref={carouselRef} onScroll={(event) => { const node = event.currentTarget; setImageIndex(Math.round(node.scrollLeft / node.clientWidth)); }} aria-label={`${story.title} images`}>
-      {images.map((image, imagePosition) => <figure className="feed-image" key={`${image.url}-${imagePosition}`}><img src={image.url} alt={image.caption || story.imageAlt} loading={imagePosition === 0 ? "eager" : "lazy"}/><figcaption>{image.caption}</figcaption></figure>)}
+      {factSlides.map(({ image }, imagePosition) => <figure className="feed-image" key={`${image.url}-${imagePosition}`}><img src={image.url} alt={image.caption || story.imageAlt} loading={imagePosition === 0 ? "eager" : "lazy"}/><figcaption>{image.caption}</figcaption></figure>)}
     </div><span className="image-gradient"/><span className="image-badge"><Icon name="sparkle" size={13}/> FACT {String(index + 1).padStart(2, "0")}</span>
-      {images.length > 1 && <><div className="image-count">{imageIndex + 1} <i>/</i> {images.length}</div><button className="carousel-arrow carousel-prev" aria-label="Previous photo" onClick={() => moveImage(-1)} disabled={imageIndex === 0}><Icon name="arrow-left" size={18}/></button><button className="carousel-arrow carousel-next" aria-label="Next photo" onClick={() => moveImage(1)} disabled={imageIndex === images.length - 1}><Icon name="arrow-right" size={18}/></button><div className="carousel-dots" aria-hidden="true">{images.map((_, dot) => <i key={dot} className={dot === imageIndex ? "active" : ""}/>)}</div></>}
+      {factSlides.length > 1 && <><div className="image-count">{imageIndex + 1} <i>/</i> {factSlides.length}</div><button className="carousel-arrow carousel-prev" aria-label="Previous photo and fact" onClick={() => moveImage(-1)} disabled={imageIndex === 0}><Icon name="arrow-left" size={18}/></button><button className="carousel-arrow carousel-next" aria-label="Next photo and fact" onClick={() => moveImage(1)} disabled={imageIndex === factSlides.length - 1}><Icon name="arrow-right" size={18}/></button><div className="carousel-dots" aria-hidden="true">{factSlides.map((_, dot) => <i key={dot} className={dot === imageIndex ? "active" : ""}/>)}</div></>}
       <span className="feed-swipe-hint">Swipe for more photos</span>
     </div>
-    <div className="feed-slide-copy"><div className="feed-slide-heading"><TopicTag topic={story.topic}/><span className="feed-source">{story.source.label.split(" · ")[0]}</span></div><h2>{story.title}</h2><p className="feed-fact">{story.summary}</p>{articleContext && <p className="feed-detail">{articleContext}</p>}
+    <div className="feed-slide-copy"><div className="feed-slide-heading"><TopicTag topic={story.topic}/><span className="feed-source">{story.source.label.split(" · ")[0]}</span></div><h2>{story.title}</h2><p className="feed-fact">{story.summary}</p>{articleContext && <p className="feed-detail" key={imageIndex}>{articleContext}</p>}
       <div className="feed-slide-footer"><span className="story-meta"><Icon name="clock" size={14}/>{story.readMinutes} min read</span><a href={story.source.url} target="_blank" rel="noreferrer">Source: Wikipedia</a></div>
-      <div className="feed-slide-actions"><button className={`action-button ${state.likedIds.includes(story.id) ? "is-liked" : ""}`} aria-label={state.likedIds.includes(story.id) ? "Unlike story" : "Like story"} aria-pressed={state.likedIds.includes(story.id)} onClick={onLike}><Icon name="heart" size={19} filled={state.likedIds.includes(story.id)}/></button><button className={`action-button ${state.savedIds.includes(story.id) ? "is-saved" : ""}`} aria-label={state.savedIds.includes(story.id) ? "Remove from saved" : "Save story"} aria-pressed={state.savedIds.includes(story.id)} onClick={onSave}><Icon name="bookmark" size={18} filled={state.savedIds.includes(story.id)}/></button><button className="read-story-button" onClick={onOpen}>Read the full story <Icon name="arrow-right" size={16}/></button><button className="skip-feed-button" onClick={onSkip}>Skip</button></div>
+      <div className="feed-slide-actions feed-action-rail"><button className={`feed-rail-action ${state.likedIds.includes(story.id) ? "is-liked" : ""}`} aria-label={state.likedIds.includes(story.id) ? "Unlike story" : "Like story"} aria-pressed={state.likedIds.includes(story.id)} onClick={onLike}><Icon name="heart" size={27} filled={state.likedIds.includes(story.id)}/><span>Like</span></button><button className={`feed-rail-action ${state.savedIds.includes(story.id) ? "is-saved" : ""}`} aria-label={state.savedIds.includes(story.id) ? "Remove from saved" : "Save story"} aria-pressed={state.savedIds.includes(story.id)} onClick={onSave}><Icon name="bookmark" size={25} filled={state.savedIds.includes(story.id)}/><span>Save</span></button><button className="feed-rail-action" aria-label="Share fact" onClick={() => void shareStory()}><Icon name="share" size={25}/><span>Share</span></button><button className="feed-rail-action" aria-label="Explore related facts" onClick={onRelated}><Icon name="sparkle" size={25}/><span>Related</span></button><button className="feed-rail-action" aria-label="Skip this fact" onClick={onSkip}><Icon name="arrow-right" size={25}/><span>Next</span></button><button className="feed-rail-action" aria-label="Read more about this fact" onClick={onOpen}><span className="feed-more-dots">•••</span><span>More</span></button></div>
     </div>
   </article>;
 }

@@ -5,8 +5,10 @@ Rekonstruksi pengalaman **Lore: Daily Facts & Learning**, dengan layar HP sebaga
 ## Yang sudah bisa digunakan
 
 - Onboarding minat, feed fakta vertikal dengan infinite loading, reader, bookmark/like, profil, dan Math Blitz.
-- Tiap kartu feed memakai vertical scroll snap; galeri foto Wikipedia dapat di-swipe horizontal.
-- Feed mengambil ringkasan dan foto live dari Wikipedia berdasarkan minat, dengan sumber dan atribusi di setiap kartu.
+- Feed mobile memakai pola For You: satu fakta per layar, snap saat scroll vertikal, serta rail Like, Save, Share, Related, Next, dan More.
+- Swipe foto bergerak horizontal di dalam sebuah fakta; setiap foto dipasangkan dengan kalimat fakta berbeda dan teks ikut berubah saat foto berganti.
+- Feed mengambil halaman bergambar dari Wikipedia berdasarkan minat, mengacak kelompok query saat sesi dimulai, menyimpan cache kandidat lokal, dan mengurangi rekomendasi yang sudah dibaca atau dilewati.
+- Cerita contoh tidak dicampur ke feed live. Hasil tanpa gambar utama dilewati supaya setiap kartu rekomendasi punya foto yang relevan dan tautan sumber.
 - Tema gelap dapat diubah dari header dan tersimpan di browser.
 - Pencarian Wikipedia live memakai hasil halaman yang relevan dan membuka ringkasan beratribusi di reader.
 - API lokal menyediakan katalog, ranker, proxy Wikipedia dengan cache, dan state reader berbasis JSON. Route serverless `/api/[...path]` tersedia untuk Vercel.
