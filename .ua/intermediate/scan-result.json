@@ -1,0 +1,170 @@
+{
+  "name": "lore-clone",
+  "description": "Rekonstruksi responsif Lore: Daily Facts & Learning. Aplikasi mobile-first ini menyediakan feed cerita singkat, reader dan koleksi bacaan, serta API lokal untuk katalog, state pembaca, dan pencarian ringkasan Wikipedia.",
+  "languages": [
+    "config",
+    "css",
+    "html",
+    "json",
+    "markdown",
+    "typescript"
+  ],
+  "frameworks": [
+    "React",
+    "Vite"
+  ],
+  "files": [
+    {
+      "path": ".env.example",
+      "language": "config",
+      "sizeLines": 2,
+      "fileCategory": "config"
+    },
+    {
+      "path": "README.md",
+      "language": "markdown",
+      "sizeLines": 35,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "RESEARCH.md",
+      "language": "markdown",
+      "sizeLines": 133,
+      "fileCategory": "docs"
+    },
+    {
+      "path": "index.html",
+      "language": "html",
+      "sizeLines": 15,
+      "fileCategory": "markup"
+    },
+    {
+      "path": "package.json",
+      "language": "json",
+      "sizeLines": 27,
+      "fileCategory": "config"
+    },
+    {
+      "path": "server/api.ts",
+      "language": "typescript",
+      "sizeLines": 148,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/App.tsx",
+      "language": "typescript",
+      "sizeLines": 341,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/app.css",
+      "language": "css",
+      "sizeLines": 492,
+      "fileCategory": "markup"
+    },
+    {
+      "path": "src/content/stories.ts",
+      "language": "typescript",
+      "sizeLines": 64,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/core/flow.ts",
+      "language": "typescript",
+      "sizeLines": 38,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/core/persistence.ts",
+      "language": "typescript",
+      "sizeLines": 33,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/core/rankFeed.ts",
+      "language": "typescript",
+      "sizeLines": 20,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/core/story.ts",
+      "language": "typescript",
+      "sizeLines": 92,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/main.tsx",
+      "language": "typescript",
+      "sizeLines": 10,
+      "fileCategory": "code"
+    },
+    {
+      "path": "src/vite-env.d.ts",
+      "language": "typescript",
+      "sizeLines": 3,
+      "fileCategory": "code"
+    },
+    {
+      "path": "tsconfig.json",
+      "language": "json",
+      "sizeLines": 22,
+      "fileCategory": "config"
+    },
+    {
+      "path": "tsconfig.server.json",
+      "language": "json",
+      "sizeLines": 8,
+      "fileCategory": "config"
+    },
+    {
+      "path": "vite.config.ts",
+      "language": "typescript",
+      "sizeLines": 7,
+      "fileCategory": "code"
+    }
+  ],
+  "totalFiles": 18,
+  "filteredByIgnore": 43,
+  "estimatedComplexity": "small",
+  "importMap": {
+    ".env.example": [],
+    "README.md": [],
+    "RESEARCH.md": [],
+    "index.html": [],
+    "package.json": [],
+    "server/api.ts": [
+      "src/content/stories.ts",
+      "src/core/rankFeed.ts",
+      "src/core/story.ts"
+    ],
+    "src/App.tsx": [
+      "src/content/stories.ts",
+      "src/core/flow.ts",
+      "src/core/persistence.ts",
+      "src/core/rankFeed.ts",
+      "src/core/story.ts"
+    ],
+    "src/app.css": [],
+    "src/content/stories.ts": [
+      "src/core/story.ts"
+    ],
+    "src/core/flow.ts": [
+      "src/core/story.ts"
+    ],
+    "src/core/persistence.ts": [
+      "src/core/story.ts"
+    ],
+    "src/core/rankFeed.ts": [
+      "src/core/story.ts"
+    ],
+    "src/core/story.ts": [],
+    "src/main.tsx": [
+      "src/App.tsx",
+      "src/app.css"
+    ],
+    "src/vite-env.d.ts": [],
+    "tsconfig.json": [],
+    "tsconfig.server.json": [],
+    "vite.config.ts": []
+  }
+}

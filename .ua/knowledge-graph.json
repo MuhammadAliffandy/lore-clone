@@ -1,0 +1,1292 @@
+{
+  "version": "1.0.0",
+  "project": {
+    "name": "Lore-clone",
+    "languages": [
+      "config",
+      "css",
+      "html",
+      "json",
+      "markdown",
+      "typescript"
+    ],
+    "frameworks": [
+      "React",
+      "Vite"
+    ],
+    "description": "Rekonstruksi responsif Lore: Daily Facts & Learning. Aplikasi mobile-first ini menyediakan feed cerita singkat, reader dan koleksi bacaan, serta API lokal untuk katalog, state pembaca, dan pencarian ringkasan Wikipedia.",
+    "analyzedAt": "2026-10-27T04:01:15.406Z",
+    "gitCommitHash": ""
+  },
+  "nodes": [
+    {
+      "id": "file:server/api.ts",
+      "type": "file",
+      "name": "api.ts",
+      "filePath": "server/api.ts",
+      "summary": "Menjalankan HTTP API lokal untuk katalog dan feed cerita, state pembaca, serta pencarian dan ringkasan artikel Wikipedia. Server memuat konfigurasi opsional dari .env, memvalidasi payload, menyimpan state ke file JSON, dan memberi cache sementara untuk respons Wikipedia.",
+      "tags": [
+        "http-api",
+        "server",
+        "wikimedia-proxy",
+        "reader-state"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:server/api.ts:readBody",
+      "type": "function",
+      "name": "readBody",
+      "filePath": "server/api.ts",
+      "lineRange": [
+        31,
+        42
+      ],
+      "summary": "Membaca request body sebagai JSON dan menolak payload yang melebihi batas atau bukan JSON valid.",
+      "tags": [
+        "request-parsing",
+        "json",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:server/api.ts:loadReaderState",
+      "type": "function",
+      "name": "loadReaderState",
+      "filePath": "server/api.ts",
+      "lineRange": [
+        44,
+        60
+      ],
+      "summary": "Memuat state pembaca dari file JSON dan mengisi default untuk koleksi, progres baca, serta topik yang valid. Jika file belum tersedia atau gagal dibaca, fungsi mengembalikan state awal.",
+      "tags": [
+        "persistence",
+        "reader-state",
+        "normalization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:server/api.ts:saveReaderState",
+      "type": "function",
+      "name": "saveReaderState",
+      "filePath": "server/api.ts",
+      "lineRange": [
+        62,
+        80
+      ],
+      "summary": "Memvalidasi dan menormalisasi state pembaca sebelum menyimpannya ke file JSON melalui file sementara dan rename atomik.",
+      "tags": [
+        "persistence",
+        "reader-state",
+        "validation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:server/api.ts:handle",
+      "type": "function",
+      "name": "handle",
+      "filePath": "server/api.ts",
+      "lineRange": [
+        92,
+        132
+      ],
+      "summary": "Memetakan request HTTP ke endpoint health, katalog, feed, state pembaca, dan layanan Wikipedia. Fungsi ini menghubungkan penyimpanan lokal, ranker feed, dan proxy Wikimedia.",
+      "tags": [
+        "route-handler",
+        "http-api",
+        "feed",
+        "wikimedia"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/content/stories.ts",
+      "type": "file",
+      "name": "stories.ts",
+      "filePath": "src/content/stories.ts",
+      "summary": "Menyediakan katalog awal berisi empat cerita singkat dalam topik sejarah, sains, budaya, dan teknologi. Cerita menyimpan ringkasan, isi, metadata gambar, dan atribusi sumber.",
+      "tags": [
+        "story-catalog",
+        "curated-content",
+        "attribution",
+        "seed-data"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/core/rankFeed.ts",
+      "type": "file",
+      "name": "rankFeed.ts",
+      "filePath": "src/core/rankFeed.ts",
+      "summary": "Mengurutkan cerita yang belum selesai atau dilewati berdasarkan topik pilihan, like, save, dan perkiraan waktu baca. Komentar kode menandai algoritma ini sebagai ranker lokal yang sederhana, bukan algoritma privat Lore.",
+      "tags": [
+        "feed-ranking",
+        "personalization",
+        "local-algorithm",
+        "core-logic"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/core/rankFeed.ts:rankFeed",
+      "type": "function",
+      "name": "rankFeed",
+      "filePath": "src/core/rankFeed.ts",
+      "lineRange": [
+        4,
+        20
+      ],
+      "summary": "Menyaring cerita yang telah selesai atau dilewati, memberi skor pada kandidat berdasarkan minat dan interaksi tersimpan, lalu mengembalikan urutan feed.",
+      "tags": [
+        "feed-ranking",
+        "scoring",
+        "personalization"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/core/story.ts",
+      "type": "file",
+      "name": "story.ts",
+      "filePath": "src/core/story.ts",
+      "summary": "Mendefinisikan topik, tipe Story, aksi pembaca, state progres, dan reducer untuk like, save, skip, pilihan topik, penyelesaian cerita, serta streak harian.",
+      "tags": [
+        "domain-model",
+        "reader-state",
+        "reducer",
+        "streak"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:src/core/story.ts:reduceReaderState",
+      "type": "function",
+      "name": "reduceReaderState",
+      "filePath": "src/core/story.ts",
+      "lineRange": [
+        62,
+        92
+      ],
+      "summary": "Menerapkan aksi pembaca ke state immutable dan menghitung streak saat cerita ditandai selesai, termasuk aturan hari ini, kemarin, atau mulai ulang.",
+      "tags": [
+        "state-reducer",
+        "reading-progress",
+        "streak",
+        "domain-logic"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/App.tsx",
+      "type": "file",
+      "name": "App.tsx",
+      "filePath": "src/App.tsx",
+      "summary": "Mengatur state global dan merangkai onboarding, feed, reader, library, profile, serta Explore/Games. Komponen ini menghubungkan katalog dan reducer lokal dengan API untuk katalog dan feed, sambil mempertahankan fallback client-side.",
+      "tags": [
+        "react-component",
+        "app-shell",
+        "screen-flow",
+        "mobile-ui"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:src/App.tsx:Icon",
+      "type": "function",
+      "name": "Icon",
+      "filePath": "src/App.tsx",
+      "lineRange": [
+        10,
+        31
+      ],
+      "summary": "Merender ikon SVG inline berdasarkan nama dan opsi ukuran atau keadaan terisi; dipakai ulang di berbagai kontrol UI.",
+      "tags": [
+        "react-component",
+        "icon",
+        "shared-ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/App.tsx:App",
+      "type": "function",
+      "name": "App",
+      "filePath": "src/App.tsx",
+      "lineRange": [
+        48,
+        190
+      ],
+      "summary": "Memuat preferensi dan state baca, mengatur layar melalui reducer, menyinkronkan data ke API dengan fallback lokal, serta menghubungkan aksi pengguna ke layar aplikasi.",
+      "tags": [
+        "react-component",
+        "state-orchestration",
+        "app-shell",
+        "api-client"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "function:src/App.tsx:Onboarding",
+      "type": "function",
+      "name": "Onboarding",
+      "filePath": "src/App.tsx",
+      "lineRange": [
+        192,
+        201
+      ],
+      "summary": "Meminta pengguna memilih topik minat sebelum feed dibuka dan meneruskan pilihan ke state aplikasi.",
+      "tags": [
+        "react-component",
+        "onboarding",
+        "topic-selection"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/App.tsx:FeedScreen",
+      "type": "function",
+      "name": "FeedScreen",
+      "filePath": "src/App.tsx",
+      "lineRange": [
+        203,
+        213
+      ],
+      "summary": "Menampilkan cerita berikutnya sebagai kartu utama, filter topik, aksi like/save/skip, serta bacaan lanjutan.",
+      "tags": [
+        "react-component",
+        "feed",
+        "story-card",
+        "topic-filter"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/App.tsx:ProfileScreen",
+      "type": "function",
+      "name": "ProfileScreen",
+      "filePath": "src/App.tsx",
+      "lineRange": [
+        231,
+        252
+      ],
+      "summary": "Merangkum streak dan aktivitas baca mingguan, memperlihatkan topik yang dipilih, serta menautkan pengguna ke koleksi tersimpan.",
+      "tags": [
+        "react-component",
+        "profile",
+        "reading-stats",
+        "preferences"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/App.tsx:ExploreScreen",
+      "type": "function",
+      "name": "ExploreScreen",
+      "filePath": "src/App.tsx",
+      "lineRange": [
+        254,
+        327
+      ],
+      "summary": "Menyediakan pencarian artikel Wikipedia melalui API lokal, membuka ringkasan beratribusi, menampilkan cerita terkait, dan menjalankan permainan Math Blitz.",
+      "tags": [
+        "react-component",
+        "explore",
+        "wikipedia-search",
+        "mini-game"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:src/core/flow.ts",
+      "type": "file",
+      "name": "flow.ts",
+      "filePath": "src/core/flow.ts",
+      "summary": "Mendefinisikan layar aplikasi, state navigasi, aksi flow, reducer transisi, dan pencarian cerita yang sedang dibuka.",
+      "tags": [
+        "state-machine",
+        "navigation",
+        "flow-control",
+        "domain-logic"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/core/flow.ts:reduceFlow",
+      "type": "function",
+      "name": "reduceFlow",
+      "filePath": "src/core/flow.ts",
+      "lineRange": [
+        23,
+        34
+      ],
+      "summary": "Menerapkan transisi onboarding, pembukaan/penutupan reader, dan navigasi antarlayar tanpa side effect.",
+      "tags": [
+        "reducer",
+        "navigation",
+        "state-transition"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/core/flow.ts:currentStory",
+      "type": "function",
+      "name": "currentStory",
+      "filePath": "src/core/flow.ts",
+      "lineRange": [
+        36,
+        38
+      ],
+      "summary": "Mencari cerita aktif di katalog berdasarkan ID pada flow state dan mengembalikan null bila tidak ditemukan.",
+      "tags": [
+        "selector",
+        "story-lookup",
+        "flow-state"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/core/persistence.ts",
+      "type": "file",
+      "name": "persistence.ts",
+      "filePath": "src/core/persistence.ts",
+      "summary": "Menyimpan dan memulihkan preferensi serta aktivitas baca melalui localStorage, dengan nilai awal sebagai fallback ketika storage tidak tersedia atau rusak.",
+      "tags": [
+        "persistence",
+        "local-storage",
+        "reader-state",
+        "browser"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/core/persistence.ts:loadReaderState",
+      "type": "function",
+      "name": "loadReaderState",
+      "filePath": "src/core/persistence.ts",
+      "lineRange": [
+        5,
+        24
+      ],
+      "summary": "Membaca state baca dari localStorage, menormalisasi daftar aktivitas dan topik, lalu kembali ke state awal bila pembacaan atau parsing gagal.",
+      "tags": [
+        "persistence",
+        "local-storage",
+        "state-hydration"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/core/persistence.ts:saveReaderState",
+      "type": "function",
+      "name": "saveReaderState",
+      "filePath": "src/core/persistence.ts",
+      "lineRange": [
+        26,
+        33
+      ],
+      "summary": "Menulis state baca ke localStorage dan mengabaikan kegagalan storage agar pengguna tetap dapat membaca.",
+      "tags": [
+        "persistence",
+        "local-storage",
+        "resilience"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/main.tsx",
+      "type": "file",
+      "name": "main.tsx",
+      "filePath": "src/main.tsx",
+      "summary": "Entry point React yang memasang App ke elemen root dan memuat stylesheet aplikasi.",
+      "tags": [
+        "entry-point",
+        "react-bootstrap",
+        "root-mount"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/App.tsx:ReaderScreen",
+      "type": "function",
+      "name": "ReaderScreen",
+      "filePath": "src/App.tsx",
+      "lineRange": [
+        215,
+        219
+      ],
+      "summary": "Menyajikan ringkasan artikel dan isi cerita, tautan sumber beserta atribusi/lisensi, aksi like/save/selesai, serta bacaan terkait.",
+      "tags": [
+        "react-component",
+        "reader",
+        "source-attribution",
+        "reading-actions"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:src/App.tsx:LibraryScreen",
+      "type": "function",
+      "name": "LibraryScreen",
+      "filePath": "src/App.tsx",
+      "lineRange": [
+        221,
+        229
+      ],
+      "summary": "Mengelola tampilan koleksi cerita tersimpan atau disukai, filter topik, dan pembukaan maupun penghapusan item.",
+      "tags": [
+        "react-component",
+        "library",
+        "saved-stories",
+        "liked-stories"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "function:src/App.tsx:StoryRow",
+      "type": "function",
+      "name": "StoryRow",
+      "filePath": "src/App.tsx",
+      "lineRange": [
+        329,
+        331
+      ],
+      "summary": "Menampilkan cerita sebagai baris ringkas yang dapat dibuka, dengan topik, waktu baca, sumber, dan gambar.",
+      "tags": [
+        "react-component",
+        "story-list",
+        "reusable-ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/App.tsx:EmptyMessage",
+      "type": "function",
+      "name": "EmptyMessage",
+      "filePath": "src/App.tsx",
+      "lineRange": [
+        333,
+        335
+      ],
+      "summary": "Menyediakan tampilan keadaan kosong dengan ikon, judul, penjelasan, dan aksi opsional.",
+      "tags": [
+        "react-component",
+        "empty-state",
+        "reusable-ui"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "function:src/App.tsx:BottomNav",
+      "type": "function",
+      "name": "BottomNav",
+      "filePath": "src/App.tsx",
+      "lineRange": [
+        337,
+        339
+      ],
+      "summary": "Merender navigasi bawah untuk Today, Explore, Saved, dan You serta indikator koleksi.",
+      "tags": [
+        "react-component",
+        "mobile-navigation",
+        "navigation"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:.env.example",
+      "type": "config",
+      "name": ".env.example",
+      "filePath": ".env.example",
+      "summary": "Memberi contoh nilai `WIKIMEDIA_USER_AGENT` yang perlu diganti dengan URL proyek atau kontak maintainer sebelum pemakaian API berkelanjutan.",
+      "tags": [
+        "configuration",
+        "environment-variable",
+        "wikimedia"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:README.md",
+      "type": "document",
+      "name": "README.md",
+      "filePath": "README.md",
+      "summary": "Menjelaskan fitur clone yang tersedia, cara menjalankan Vite dan API lokal, endpoint, serta modul utama untuk reader, feed, penyimpanan, dan konten.",
+      "tags": [
+        "documentation",
+        "project-overview",
+        "getting-started",
+        "api-reference"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "document:RESEARCH.md",
+      "type": "document",
+      "name": "RESEARCH.md",
+      "filePath": "RESEARCH.md",
+      "summary": "Mencatat temuan sumber publik dan observasi REA tentang Lore, alur produk, dependency vendor, batas bukti, serta rancangan dan implementasi clone saat ini.",
+      "tags": [
+        "documentation",
+        "product-research",
+        "architecture",
+        "evidence"
+      ],
+      "complexity": "moderate"
+    },
+    {
+      "id": "file:index.html",
+      "type": "file",
+      "name": "index.html",
+      "filePath": "index.html",
+      "summary": "Menyiapkan dokumen HTML awal dengan bahasa Indonesia, viewport yang menghormati safe area ponsel, warna tema, metadata halaman, dan mount point React yang memuat `src/main.tsx`.",
+      "tags": [
+        "html-entry",
+        "mobile-viewport",
+        "metadata",
+        "react-bootstrap"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:package.json",
+      "type": "config",
+      "name": "package.json",
+      "filePath": "package.json",
+      "summary": "Mendefinisikan dependency React, Vite, TypeScript, dan runner server, serta perintah development, build, preview, dan serve untuk UI dan API lokal.",
+      "tags": [
+        "configuration",
+        "dependencies",
+        "build-system",
+        "development"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:tsconfig.json",
+      "type": "config",
+      "name": "tsconfig.json",
+      "filePath": "tsconfig.json",
+      "summary": "Mengatur kompilasi TypeScript strict untuk source browser, termasuk target ES2022, JSX React, module resolution bundler, dan pemeriksaan tanpa emit.",
+      "tags": [
+        "configuration",
+        "typescript",
+        "strict-mode",
+        "frontend"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "config:tsconfig.server.json",
+      "type": "config",
+      "name": "tsconfig.server.json",
+      "filePath": "tsconfig.server.json",
+      "summary": "Memperluas konfigurasi TypeScript utama untuk source `server/**/*.ts` dan menambahkan tipe Node pada pemeriksaan API lokal.",
+      "tags": [
+        "configuration",
+        "typescript",
+        "server",
+        "node-types"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:src/app.css",
+      "type": "file",
+      "name": "app.css",
+      "filePath": "src/app.css",
+      "summary": "Menetapkan token warna dan tipografi serta gaya untuk onboarding, feed, reader, profil, koleksi, eksplorasi, dan permainan. Breakpoint khusus mengecilkan layout untuk ponsel, mengganti rail desktop dengan navigasi bawah yang mempertimbangkan safe area, dan mengatur ulang grid konten.",
+      "tags": [
+        "responsive-layout",
+        "mobile-first",
+        "design-tokens",
+        "application-styles"
+      ],
+      "complexity": "complex"
+    },
+    {
+      "id": "file:src/vite-env.d.ts",
+      "type": "file",
+      "name": "vite-env.d.ts",
+      "filePath": "src/vite-env.d.ts",
+      "summary": "Memuat tipe client Vite dan deklarasi ambient agar import file CSS dikenali oleh TypeScript.",
+      "tags": [
+        "vite",
+        "typescript",
+        "ambient-types",
+        "css-modules"
+      ],
+      "complexity": "simple"
+    },
+    {
+      "id": "file:vite.config.ts",
+      "type": "file",
+      "name": "vite.config.ts",
+      "filePath": "vite.config.ts",
+      "summary": "Mengaktifkan plugin React untuk Vite dan meneruskan request `/api` dari development server ke API lokal pada port 8787.",
+      "tags": [
+        "vite",
+        "react",
+        "dev-server",
+        "api-proxy"
+      ],
+      "complexity": "simple"
+    }
+  ],
+  "edges": [
+    {
+      "source": "file:server/api.ts",
+      "target": "file:src/content/stories.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:server/api.ts",
+      "target": "file:src/core/rankFeed.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:server/api.ts",
+      "target": "file:src/core/story.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/content/stories.ts",
+      "target": "file:src/core/story.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/core/rankFeed.ts",
+      "target": "file:src/core/story.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:server/api.ts",
+      "target": "function:server/api.ts:readBody",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:server/api.ts",
+      "target": "function:server/api.ts:loadReaderState",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:server/api.ts",
+      "target": "function:server/api.ts:saveReaderState",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:server/api.ts",
+      "target": "function:server/api.ts:handle",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/core/rankFeed.ts",
+      "target": "function:src/core/rankFeed.ts:rankFeed",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/core/story.ts",
+      "target": "function:src/core/story.ts:reduceReaderState",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/core/rankFeed.ts",
+      "target": "function:src/core/rankFeed.ts:rankFeed",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:src/core/story.ts",
+      "target": "function:src/core/story.ts:reduceReaderState",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:server/api.ts:handle",
+      "target": "function:server/api.ts:readBody",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:server/api.ts:handle",
+      "target": "function:server/api.ts:loadReaderState",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:server/api.ts:handle",
+      "target": "function:server/api.ts:saveReaderState",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:server/api.ts:handle",
+      "target": "function:src/core/rankFeed.ts:rankFeed",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "file:src/content/stories.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "file:src/core/flow.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "file:src/core/persistence.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "file:src/core/rankFeed.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "file:src/core/story.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/core/flow.ts",
+      "target": "file:src/core/story.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/core/persistence.ts",
+      "target": "file:src/core/story.ts",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/main.tsx",
+      "target": "file:src/App.tsx",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/main.tsx",
+      "target": "file:src/app.css",
+      "type": "imports",
+      "direction": "forward",
+      "weight": 0.7
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:Icon",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:App",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:Onboarding",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:FeedScreen",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:ProfileScreen",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:ExploreScreen",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/core/flow.ts",
+      "target": "function:src/core/flow.ts:reduceFlow",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/core/flow.ts",
+      "target": "function:src/core/flow.ts:currentStory",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/core/persistence.ts",
+      "target": "function:src/core/persistence.ts:loadReaderState",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/core/persistence.ts",
+      "target": "function:src/core/persistence.ts:saveReaderState",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:App",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:src/core/flow.ts",
+      "target": "function:src/core/flow.ts:reduceFlow",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:src/core/flow.ts",
+      "target": "function:src/core/flow.ts:currentStory",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:src/core/persistence.ts",
+      "target": "function:src/core/persistence.ts:loadReaderState",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "file:src/core/persistence.ts",
+      "target": "function:src/core/persistence.ts:saveReaderState",
+      "type": "exports",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/core/flow.ts:reduceFlow",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/core/flow.ts:currentStory",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/core/persistence.ts:loadReaderState",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/core/persistence.ts:saveReaderState",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/core/rankFeed.ts:rankFeed",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/core/story.ts:reduceReaderState",
+      "type": "calls",
+      "direction": "forward",
+      "weight": 0.8
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/App.tsx:Onboarding",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/App.tsx:FeedScreen",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/App.tsx:ProfileScreen",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "function:src/App.tsx:App",
+      "target": "function:src/App.tsx:ExploreScreen",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:ReaderScreen",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:LibraryScreen",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:StoryRow",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:EmptyMessage",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "file:src/App.tsx",
+      "target": "function:src/App.tsx:BottomNav",
+      "type": "contains",
+      "direction": "forward",
+      "weight": 1
+    },
+    {
+      "source": "config:.env.example",
+      "target": "file:server/api.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:src/App.tsx",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:server/api.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:src/core/story.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:src/core/rankFeed.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:src/core/persistence.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:README.md",
+      "target": "file:src/content/stories.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:RESEARCH.md",
+      "target": "file:server/api.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:RESEARCH.md",
+      "target": "file:src/App.tsx",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:RESEARCH.md",
+      "target": "file:src/core/story.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:RESEARCH.md",
+      "target": "file:src/core/rankFeed.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:RESEARCH.md",
+      "target": "file:src/core/persistence.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "document:RESEARCH.md",
+      "target": "file:src/content/stories.ts",
+      "type": "documents",
+      "direction": "forward",
+      "weight": 0.5
+    },
+    {
+      "source": "file:index.html",
+      "target": "file:src/main.tsx",
+      "type": "depends_on",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:package.json",
+      "target": "file:src/main.tsx",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:package.json",
+      "target": "file:server/api.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:tsconfig.json",
+      "target": "file:src/App.tsx",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "config:tsconfig.server.json",
+      "target": "file:server/api.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    },
+    {
+      "source": "file:vite.config.ts",
+      "target": "file:server/api.ts",
+      "type": "configures",
+      "direction": "forward",
+      "weight": 0.6
+    }
+  ],
+  "layers": [
+    {
+      "id": "layer:mobile-ui",
+      "name": "Antarmuka Mobile-First",
+      "description": "Aplikasi React, bootstrap browser, stylesheet responsif, dan dokumen HTML yang menyusun onboarding, feed, reader, Explore, library, serta profil untuk layar ponsel dan desktop.",
+      "nodeIds": [
+        "file:src/App.tsx",
+        "file:src/main.tsx",
+        "file:src/app.css",
+        "file:src/vite-env.d.ts",
+        "file:index.html"
+      ]
+    },
+    {
+      "id": "layer:domain-content",
+      "name": "Domain, Feed, dan Konten",
+      "description": "Model cerita dan state reader, alur navigasi, penyimpanan browser, ranker feed deterministik, serta katalog cerita sumber awal yang dipakai UI dan API.",
+      "nodeIds": [
+        "file:src/core/story.ts",
+        "file:src/core/flow.ts",
+        "file:src/core/persistence.ts",
+        "file:src/core/rankFeed.ts",
+        "file:src/content/stories.ts"
+      ]
+    },
+    {
+      "id": "layer:local-api-services",
+      "name": "API Lokal dan Integrasi Wikimedia",
+      "description": "Server HTTP lokal menyediakan katalog, feed, persistensi JSON untuk reader-state, serta proxy Wikimedia dengan cache untuk pencarian artikel dan ringkasan halaman.",
+      "nodeIds": [
+        "file:server/api.ts"
+      ]
+    },
+    {
+      "id": "layer:project-configuration",
+      "name": "Konfigurasi Proyek",
+      "description": "Manifest dependency dan script, konfigurasi TypeScript/Vite, serta contoh User-Agent Wikimedia untuk menjalankan dan membangun web serta API lokal.",
+      "nodeIds": [
+        "config:.env.example",
+        "config:package.json",
+        "config:tsconfig.json",
+        "config:tsconfig.server.json",
+        "file:vite.config.ts"
+      ]
+    },
+    {
+      "id": "layer:research-docs",
+      "name": "Riset dan Dokumentasi",
+      "description": "Dokumentasi cara menjalankan clone dan temuan REA yang membedakan perilaku Lore yang teramati dari keputusan arsitektur lokal clone.",
+      "nodeIds": [
+        "document:README.md",
+        "document:RESEARCH.md"
+      ]
+    }
+  ],
+  "tour": [
+    {
+      "order": 1,
+      "title": "Tujuan dan cara menjalankan",
+      "description": "Mulai dari README untuk melihat fitur yang sudah tersedia dan batas implementasi clone ini. Dokumen itu juga menunjukkan cara menjalankan UI dan API lokal, jadi kita punya peta sebelum masuk ke source code.",
+      "nodeIds": [
+        "document:README.md",
+        "config:package.json"
+      ]
+    },
+    {
+      "order": 2,
+      "title": "Entry point aplikasi",
+      "description": "Dari konfigurasi proyek, masuk ke entry point React yang memasang App serta stylesheet ke halaman. App menjadi pengatur alur onboarding, Today, Explore, Saved, profil, dan reader; di sini juga UI berhubungan dengan API lokal dan fallback browser.",
+      "nodeIds": [
+        "file:src/main.tsx",
+        "file:src/App.tsx"
+      ],
+      "languageLesson": "React hooks seperti useState, useReducer, useEffect, dan useMemo menyimpan state, merespons perubahan, dan menghindari komputasi ulang yang tidak diperlukan."
+    },
+    {
+      "order": 3,
+      "title": "Pengalaman di layar HP",
+      "description": "App merangkai onboarding minat, kartu cerita, reader, koleksi, dan navigasi bawah sebagai satu pengalaman. Stylesheet mengubah rail desktop menjadi navigasi bawah, menjaga area aman perangkat, dan mengatur ulang grid untuk viewport sempit—ini penting karena penggunaan ponsel adalah prioritas desain clone.",
+      "nodeIds": [
+        "file:src/App.tsx",
+        "file:src/app.css"
+      ]
+    },
+    {
+      "order": 4,
+      "title": "Cerita dan progres",
+      "description": "Model domain mendefinisikan Story, topik, aksi pembaca, tanggal selesai, dan streak; reducer adalah satu tempat untuk menerapkan perubahan like, save, skip, atau selesai. Penyimpanan browser memulihkan state saat halaman dibuka lagi, sedangkan katalog menyediakan empat cerita kurasi awal dengan sumber dan metadata masing-masing.",
+      "nodeIds": [
+        "file:src/core/story.ts",
+        "function:src/core/story.ts:reduceReaderState",
+        "file:src/core/persistence.ts",
+        "file:src/content/stories.ts"
+      ]
+    },
+    {
+      "order": 5,
+      "title": "Urutan feed harian",
+      "description": "Ranker lokal menyusun cerita berdasarkan minat dan aktivitas seperti selesai, skip, like, dan save, lalu App menggunakan urutan itu untuk feed. Ini pilihan algoritma clone yang sederhana dan dapat diperiksa; riset tidak menemukan rumus internal ranking Lore yang bisa dibuktikan.",
+      "nodeIds": [
+        "file:src/core/rankFeed.ts",
+        "function:src/core/rankFeed.ts:rankFeed",
+        "file:src/App.tsx"
+      ]
+    },
+    {
+      "order": 6,
+      "title": "Service API lokal",
+      "description": "Satu proses HTTP lokal menangani katalog, feed, pembacaan dan penyimpanan reader-state, serta proxy Wikimedia; endpoint-nya didokumentasikan di README. Proxy memberi cache sementara pada pencarian dan ringkasan halaman, sedangkan Vite meneruskan jalur /api ke port service saat development—modul ini belum dipecah menjadi deployment microservice terpisah.",
+      "nodeIds": [
+        "file:server/api.ts",
+        "function:server/api.ts:handle",
+        "file:vite.config.ts",
+        "config:.env.example"
+      ]
+    },
+    {
+      "order": 7,
+      "title": "Wikipedia sampai reader",
+      "description": "Di Explore, pembaca dapat mencari artikel Wikipedia, memilih hasil, lalu memuat ringkasan dan mengubahnya menjadi story yang bisa dibuka di reader. Link sumber, atribusi, dan lisensi ditampilkan bersama cerita; RESEARCH.md menjelaskan bahwa service lokal ini adalah rancangan clone, sementara arsitektur internal Lore belum dapat dipastikan dari bukti publik.",
+      "nodeIds": [
+        "function:src/App.tsx:ExploreScreen",
+        "file:server/api.ts",
+        "document:RESEARCH.md"
+      ]
+    }
+  ]
+}

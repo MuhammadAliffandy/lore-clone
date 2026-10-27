@@ -1,0 +1,620 @@
+{
+  "version": "1.0.0",
+  "gitCommitHash": "",
+  "generatedAt": "2026-10-27T04:01:21.761Z",
+  "files": {
+    ".env.example": {
+      "filePath": ".env.example",
+      "contentHash": "b06946f6160d9a39c2766e70d836e6c97772088595ceab88b408af4a17ae26b8",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 3,
+      "hasStructuralAnalysis": false
+    },
+    "README.md": {
+      "filePath": "README.md",
+      "contentHash": "9d234f0c3138ae68581e07acafd1fc6130c363905e0857c4c931866a22cb4ad0",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 36,
+      "hasStructuralAnalysis": false
+    },
+    "RESEARCH.md": {
+      "filePath": "RESEARCH.md",
+      "contentHash": "bb2926c70c5da18423630d2a814fdc47363cd80c00576a01c3af8889d39afcbd",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 134,
+      "hasStructuralAnalysis": false
+    },
+    "index.html": {
+      "filePath": "index.html",
+      "contentHash": "f0c1b613c5bab8a21c9bace205aab621dd64b5317d537805b57d3ccf01bac833",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 16,
+      "hasStructuralAnalysis": false
+    },
+    "package.json": {
+      "filePath": "package.json",
+      "contentHash": "d37b0584359ccffc4343abde6e7dd4a5a662f610dd40b8836f426ba490ad10aa",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 28,
+      "hasStructuralAnalysis": false
+    },
+    "server/api.ts": {
+      "filePath": "server/api.ts",
+      "contentHash": "95691bf02c381a894a0d266e4b310b883ae7455d0303f58d517e7f78f6a3c174",
+      "functions": [
+        {
+          "name": "sendJson",
+          "params": [
+            "response",
+            "status",
+            "value",
+            "headers"
+          ],
+          "exported": false,
+          "lineCount": 4
+        },
+        {
+          "name": "readBody",
+          "params": [
+            "request"
+          ],
+          "returnType": "Promise<unknown>",
+          "exported": false,
+          "lineCount": 12
+        },
+        {
+          "name": "loadReaderState",
+          "params": [],
+          "returnType": "Promise<ReaderState>",
+          "exported": false,
+          "lineCount": 17
+        },
+        {
+          "name": "saveReaderState",
+          "params": [
+            "value"
+          ],
+          "exported": false,
+          "lineCount": 19
+        },
+        {
+          "name": "cachedJson",
+          "params": [
+            "key",
+            "ttlMs",
+            "url"
+          ],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "handle",
+          "params": [
+            "request",
+            "response"
+          ],
+          "exported": false,
+          "lineCount": 41
+        }
+      ],
+      "classes": [
+        {
+          "name": "ApiError",
+          "methods": [
+            "constructor"
+          ],
+          "properties": [],
+          "exported": false,
+          "lineCount": 5
+        }
+      ],
+      "imports": [
+        {
+          "source": "node:http",
+          "specifiers": [
+            "createServer",
+            "IncomingMessage",
+            "ServerResponse"
+          ]
+        },
+        {
+          "source": "node:fs",
+          "specifiers": [
+            "existsSync"
+          ]
+        },
+        {
+          "source": "node:fs/promises",
+          "specifiers": [
+            "mkdir",
+            "readFile",
+            "rename",
+            "writeFile"
+          ]
+        },
+        {
+          "source": "node:process",
+          "specifiers": [
+            "loadEnvFile"
+          ]
+        },
+        {
+          "source": "node:url",
+          "specifiers": [
+            "fileURLToPath"
+          ]
+        },
+        {
+          "source": "node:path",
+          "specifiers": [
+            "dirname"
+          ]
+        },
+        {
+          "source": "../src/content/stories.ts",
+          "specifiers": [
+            "stories"
+          ]
+        },
+        {
+          "source": "../src/core/story.ts",
+          "specifiers": [
+            "initialReaderState",
+            "TOPICS",
+            "ReaderState",
+            "Topic"
+          ]
+        },
+        {
+          "source": "../src/core/rankFeed.ts",
+          "specifiers": [
+            "rankFeed"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 149,
+      "hasStructuralAnalysis": true
+    },
+    "src/App.tsx": {
+      "filePath": "src/App.tsx",
+      "contentHash": "d9e6081fa7ba90802140fb1a1726e70567af2805b973d3e570f3d6635462de33",
+      "functions": [
+        {
+          "name": "Icon",
+          "params": [
+            "{ name, size = 20, filled = false }"
+          ],
+          "exported": false,
+          "lineCount": 22
+        },
+        {
+          "name": "TopicTag",
+          "params": [
+            "{ topic }"
+          ],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "App",
+          "params": [],
+          "exported": false,
+          "lineCount": 143
+        },
+        {
+          "name": "Onboarding",
+          "params": [
+            "{ selected, onToggle, onContinue }"
+          ],
+          "exported": false,
+          "lineCount": 10
+        },
+        {
+          "name": "FeedScreen",
+          "params": [
+            "{ stories: visible, allStories, state, activeFilter, onFilter, onOpen, onLike, onSave, onSkip, onExplore }"
+          ],
+          "exported": false,
+          "lineCount": 11
+        },
+        {
+          "name": "ReaderScreen",
+          "params": [
+            "{ story, catalog, state, onBack, onLike, onSave, onComplete, onOpenRelated }"
+          ],
+          "exported": false,
+          "lineCount": 5
+        },
+        {
+          "name": "LibraryScreen",
+          "params": [
+            "{ catalog, state, onOpen, onLike, onSave, onFindStories }"
+          ],
+          "exported": false,
+          "lineCount": 9
+        },
+        {
+          "name": "ProfileScreen",
+          "params": [
+            "{ catalog, state, onTopics, showTopics, onToggleTopic, onOpenSaved, onOpenStory }"
+          ],
+          "exported": false,
+          "lineCount": 22
+        },
+        {
+          "name": "ExploreScreen",
+          "params": [
+            "{ catalog, preferredTopic, selectedGame, onSelect, onOpenStory }"
+          ],
+          "exported": false,
+          "lineCount": 74
+        },
+        {
+          "name": "StoryRow",
+          "params": [
+            "{ story, onClick }"
+          ],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "EmptyMessage",
+          "params": [
+            "{ title, text, children }"
+          ],
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "BottomNav",
+          "params": [
+            "{ screen, savedCount, onNavigate }"
+          ],
+          "exported": false,
+          "lineCount": 3
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "useEffect",
+            "useMemo",
+            "useReducer",
+            "useState"
+          ]
+        },
+        {
+          "source": "./content/stories",
+          "specifiers": [
+            "stories"
+          ]
+        },
+        {
+          "source": "./core/flow",
+          "specifiers": [
+            "currentStory",
+            "initialFlowState",
+            "reduceFlow",
+            "AppScreen"
+          ]
+        },
+        {
+          "source": "./core/persistence",
+          "specifiers": [
+            "loadReaderState",
+            "saveReaderState"
+          ]
+        },
+        {
+          "source": "./core/rankFeed",
+          "specifiers": [
+            "rankFeed"
+          ]
+        },
+        {
+          "source": "./core/story",
+          "specifiers": [
+            "reduceReaderState",
+            "TOPICS",
+            "ReaderAction",
+            "ReaderState",
+            "Story",
+            "Topic"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 342,
+      "hasStructuralAnalysis": true
+    },
+    "src/app.css": {
+      "filePath": "src/app.css",
+      "contentHash": "21674e0c03d9c1d62bfde732bc60ba0b3db68055e3b0e54b4bcd1fde5d90282f",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 493,
+      "hasStructuralAnalysis": false
+    },
+    "src/content/stories.ts": {
+      "filePath": "src/content/stories.ts",
+      "contentHash": "7e633e9dcd2b3c9eac9b97adde9085089f7645f69211a53d6d81f6244daab14f",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "../core/story",
+          "specifiers": [
+            "Story"
+          ]
+        }
+      ],
+      "exports": [
+        "stories"
+      ],
+      "totalLines": 65,
+      "hasStructuralAnalysis": true
+    },
+    "src/core/flow.ts": {
+      "filePath": "src/core/flow.ts",
+      "contentHash": "72bdb517afb031239abaf1b881d43e3ae853e2ee6771f0207c761212536f4a29",
+      "functions": [
+        {
+          "name": "reduceFlow",
+          "params": [
+            "state",
+            "action"
+          ],
+          "returnType": "FlowState",
+          "exported": true,
+          "lineCount": 12
+        },
+        {
+          "name": "currentStory",
+          "params": [
+            "state",
+            "stories"
+          ],
+          "returnType": "Story | null",
+          "exported": true,
+          "lineCount": 3
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "./story",
+          "specifiers": [
+            "Story"
+          ]
+        }
+      ],
+      "exports": [
+        "initialFlowState",
+        "reduceFlow",
+        "currentStory"
+      ],
+      "totalLines": 39,
+      "hasStructuralAnalysis": true
+    },
+    "src/core/persistence.ts": {
+      "filePath": "src/core/persistence.ts",
+      "contentHash": "e659198e9baab5793819c0ac132edba93db81ef3d05be0cc03f090a69df67bb0",
+      "functions": [
+        {
+          "name": "loadReaderState",
+          "params": [],
+          "returnType": "ReaderState",
+          "exported": true,
+          "lineCount": 20
+        },
+        {
+          "name": "saveReaderState",
+          "params": [
+            "state"
+          ],
+          "returnType": "void",
+          "exported": true,
+          "lineCount": 8
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "./story",
+          "specifiers": [
+            "initialReaderState",
+            "ReaderState"
+          ]
+        }
+      ],
+      "exports": [
+        "loadReaderState",
+        "saveReaderState"
+      ],
+      "totalLines": 34,
+      "hasStructuralAnalysis": true
+    },
+    "src/core/rankFeed.ts": {
+      "filePath": "src/core/rankFeed.ts",
+      "contentHash": "8ed7b486e9de8b5fcfd6a4eafa3218dfed0940d246e097a326c22f6b800a81e8",
+      "functions": [
+        {
+          "name": "rankFeed",
+          "params": [
+            "stories",
+            "state"
+          ],
+          "returnType": "Story[]",
+          "exported": true,
+          "lineCount": 17
+        }
+      ],
+      "classes": [],
+      "imports": [
+        {
+          "source": "./story",
+          "specifiers": [
+            "ReaderState",
+            "Story"
+          ]
+        }
+      ],
+      "exports": [
+        "rankFeed"
+      ],
+      "totalLines": 21,
+      "hasStructuralAnalysis": true
+    },
+    "src/core/story.ts": {
+      "filePath": "src/core/story.ts",
+      "contentHash": "3ed075b42e4e73db1a43bbc0ad223258eb3fd739ed1c051a9cba724bbf7aa834",
+      "functions": [
+        {
+          "name": "toggle",
+          "params": [
+            "items",
+            "value"
+          ],
+          "returnType": "string[]",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "dayKey",
+          "params": [
+            "value"
+          ],
+          "returnType": "string",
+          "exported": false,
+          "lineCount": 3
+        },
+        {
+          "name": "reduceReaderState",
+          "params": [
+            "state",
+            "action",
+            "now"
+          ],
+          "returnType": "ReaderState",
+          "exported": true,
+          "lineCount": 31
+        }
+      ],
+      "classes": [],
+      "imports": [],
+      "exports": [
+        "TOPICS",
+        "initialReaderState",
+        "reduceReaderState"
+      ],
+      "totalLines": 93,
+      "hasStructuralAnalysis": true
+    },
+    "src/main.tsx": {
+      "filePath": "src/main.tsx",
+      "contentHash": "a4811d2073a9b1f36b7043b1e35c9bb922b71faa81f69e72fd802193b0d5bf20",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "react",
+          "specifiers": [
+            "React"
+          ]
+        },
+        {
+          "source": "react-dom/client",
+          "specifiers": [
+            "createRoot"
+          ]
+        },
+        {
+          "source": "./App",
+          "specifiers": [
+            "App"
+          ]
+        },
+        {
+          "source": "./app.css",
+          "specifiers": []
+        }
+      ],
+      "exports": [],
+      "totalLines": 11,
+      "hasStructuralAnalysis": true
+    },
+    "src/vite-env.d.ts": {
+      "filePath": "src/vite-env.d.ts",
+      "contentHash": "67ba1f5b1f143fc83aaae9454c491d181061a1e1feff96966887dc45c117d694",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 4,
+      "hasStructuralAnalysis": true
+    },
+    "tsconfig.json": {
+      "filePath": "tsconfig.json",
+      "contentHash": "1a35232d74055223b1407fe45876c4d34855cdfb05a82044c2429e821fa48e34",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 23,
+      "hasStructuralAnalysis": false
+    },
+    "tsconfig.server.json": {
+      "filePath": "tsconfig.server.json",
+      "contentHash": "3a00bea9324af70261dceabd2f7d2390df6fa776f16c748021feb7d2525aaca9",
+      "functions": [],
+      "classes": [],
+      "imports": [],
+      "exports": [],
+      "totalLines": 9,
+      "hasStructuralAnalysis": false
+    },
+    "vite.config.ts": {
+      "filePath": "vite.config.ts",
+      "contentHash": "a5a2d3b06d3c80d78a89a4cf2716e2fd8d220ef8446cf29363efdd53fcce0a04",
+      "functions": [],
+      "classes": [],
+      "imports": [
+        {
+          "source": "vite",
+          "specifiers": [
+            "defineConfig"
+          ]
+        },
+        {
+          "source": "@vitejs/plugin-react",
+          "specifiers": [
+            "react"
+          ]
+        }
+      ],
+      "exports": [],
+      "totalLines": 8,
+      "hasStructuralAnalysis": true
+    }
+  }
+}

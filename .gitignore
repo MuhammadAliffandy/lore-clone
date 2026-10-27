@@ -1,0 +1,14 @@
+node_modules/
+dist/
+.DS_Store
+*.tsbuildinfo
+
+.env
+.env.*
+!.env.example
+data/reader-state.json
+data/*.tmp
+.ua/.trash-*/
+.ua/tmp/
+.ua/intermediate/*
+!.ua/intermediate/scan-result.json
