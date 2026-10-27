@@ -45,6 +45,11 @@ function TopicTag({ topic }: { topic: Topic }) {
   return <span className={`topic-tag topic-${TOPIC_TONES[topic]}`}><span />{topic}</span>;
 }
 
+function shortImageCaption(caption: string) {
+  const descriptive = caption.split(/\s+·\s+(?=Credit:|CC BY|Public domain)/i)[0]?.trim() ?? caption;
+  return descriptive.length > 68 ? `${descriptive.slice(0, 65).trimEnd()}…` : descriptive;
+}
+
 function App() {
   const [theme, setTheme] = useState<"light" | "dark">(() => window.localStorage.getItem("lore-clone.theme") === "light" ? "light" : "dark");
   const [didOnboard, setDidOnboard] = useState(() => window.localStorage.getItem("lore-clone.onboarded") === "yes");
@@ -381,8 +386,8 @@ function FeedStory({ story, active, state, onOpen, onLike, onSave, onSkip, onRel
   return <article className={`feed-slide story-card story-card--${story.topic.toLowerCase()}`} data-story-id={story.id}>
     <div className="fact-panel-carousel" ref={carouselRef} onScroll={(event) => { const node = event.currentTarget; setImageIndex(Math.round(node.scrollLeft / node.clientWidth)); }} aria-label={`${story.title} fact slides`}>
       {factSlides.map(({ image, fact }, panelIndex) => <section className="feed-panel" key={`${image.url}-${panelIndex}`} aria-label={`Fact ${panelIndex + 1} of ${factSlides.length}`}>
-        <div className="feed-slide-media"><figure className="feed-image"><img src={image.url} alt={image.caption || story.imageAlt} loading={panelIndex === 0 ? "eager" : "lazy"}/><figcaption>{image.caption}</figcaption></figure><span className="image-gradient"/><span className="image-badge"><Icon name="sparkle" size={13}/> {story.topic.toUpperCase()}</span></div>
-        <div className="feed-slide-copy"><div className="feed-slide-heading"><TopicTag topic={story.topic}/><span className="feed-source">{story.source.label.split(" · ")[0]}</span></div><h2>{story.title}</h2><p className="feed-fact">{story.summary}</p><p className="feed-detail" key={panelIndex}>{fact}</p>
+        <div className="feed-slide-media"><figure className="feed-image" aria-label={image.caption}><img src={image.url} alt={image.caption || story.imageAlt} loading={panelIndex === 0 ? "eager" : "lazy"}/></figure></div>
+        <div className="feed-slide-copy"><div className="feed-slide-heading"><TopicTag topic={story.topic}/><span className="feed-source">{story.source.label.split(" · ")[0]}</span></div><h2>{panelIndex === 0 ? story.title : shortImageCaption(image.caption) || story.title}</h2><p className="feed-detail" key={panelIndex}>{fact}</p>
           <div className="feed-slide-footer"><span className="story-meta"><Icon name="clock" size={14}/>{story.readMinutes} min read</span><a href={story.source.url} target="_blank" rel="noreferrer">Source: Wikipedia</a></div>
         </div>
       </section>)}
