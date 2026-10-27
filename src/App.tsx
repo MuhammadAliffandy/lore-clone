@@ -45,9 +45,45 @@ function TopicTag({ topic }: { topic: Topic }) {
   return <span className={`topic-tag topic-${TOPIC_TONES[topic]}`}><span />{topic}</span>;
 }
 
-function shortImageCaption(caption: string) {
-  const descriptive = caption.split(/\s+·\s+(?=Credit:|CC BY|Public domain)/i)[0]?.trim() ?? caption;
-  return descriptive.length > 68 ? `${descriptive.slice(0, 65).trimEnd()}…` : descriptive;
+function microPassages(paragraphs: string[], fallback: string) {
+  const passages: Array<{ text: string; paragraphIndex: number }> = [];
+  const segmenter = new Intl.Segmenter("en", { granularity: "sentence" });
+  paragraphs.forEach((paragraph, paragraphIndex) => {
+    const sentences = Array.from(segmenter.segment(paragraph.replace(/\s+/g, " ").trim()), (part) => part.segment.trim()).filter(Boolean);
+    for (let start = 0; start < Math.min(sentences.length, 8); start += 1) {
+      if (/^(?:it|they|this|these|those|he|she|however|furthermore|moreover|also|such)\b/i.test(sentences[start]!)) continue;
+      const selected: string[] = [];
+      for (const sentence of sentences.slice(start)) {
+        if (sentence.endsWith(":")) break;
+        const nextWords = `${selected.join(" ")} ${sentence}`.trim().split(/\s+/).length;
+        if (selected.length && (nextWords > 96 || selected.length >= 4)) break;
+        if (sentence.split(/\s+/).length > 96) break;
+        selected.push(sentence);
+        if (nextWords >= 70) break;
+      }
+      const text = selected.join(" ");
+      if (text.split(/\s+/).length < 38) continue;
+      passages.push({ text, paragraphIndex });
+    }
+  });
+  return passages.length ? passages : [{ text: fallback, paragraphIndex: -1 }];
+}
+
+function imageTextOverlap(caption: string, passage: string, title: string) {
+  const titleWords = new Set(title.toLocaleLowerCase().match(/[a-z]{4,}/g) ?? []);
+  const common = new Set(["this", "that", "with", "from", "which", "their", "there", "about", "through", "below", "between", "within", "after", "before", "while", "where", "when", "what", "than", "more", "less", "other", "some", "many", "also", "been", "being", "have", "were", "seen", "shown", "showing", "creating", "known", "large", "small", "world", "earth", "image", "photo", "figure", "diagram", "credit", "public", "domain", "wikipedia"]);
+  const words = new Set((caption.toLocaleLowerCase().match(/[a-z]{4,}/g) ?? []).filter((word) => !titleWords.has(word) && !common.has(word)));
+  const matches = new Set((passage.toLocaleLowerCase().match(/[a-z]{4,}/g) ?? []).filter((word) => words.has(word))).size;
+  return matches >= 3 || (matches >= 2 && words.size <= 4) ? matches : 0;
+}
+
+function splitMicroPassage(passage: string) {
+  const sentences = Array.from(new Intl.Segmenter("en", { granularity: "sentence" }).segment(passage), (part) => part.segment.trim()).filter(Boolean);
+  return sentences.length > 1 ? { lead: sentences[0]!, detail: sentences.slice(1).join(" ") } : { lead: "", detail: passage };
+}
+
+function isViableFeedStory(story: Story) {
+  return Boolean(story.imageUrl && story.title.length <= 72 && !/^(?:List|Timeline|Index|Outline) of\b/i.test(story.title));
 }
 
 function App() {
@@ -260,8 +296,8 @@ function FeedScreen({ stories: _stories, allStories: _allStories, preferredTopic
     try {
       const cached = JSON.parse(window.localStorage.getItem(`lore-clone.feed-cache:${topicKey}`) ?? "null") as { savedAt?: number; items?: Story[] } | null;
       if (cached?.savedAt && Date.now() - cached.savedAt < 30 * 60_000 && Array.isArray(cached.items)) {
-        cachedStories.current = cached.items;
-        const fresh = cached.items.filter((item) => !seen.current.has(item.id));
+        cachedStories.current = cached.items.filter(isViableFeedStory);
+        const fresh = cachedStories.current.filter((item) => !seen.current.has(item.id));
         fresh.forEach((item) => known.current.add(item.id));
         setItems(fresh.slice(0, 20));
       }
@@ -289,7 +325,7 @@ function FeedScreen({ stories: _stories, allStories: _allStories, preferredTopic
         if (!response.ok) throw new Error(data.error ?? "Could not load facts from Wikipedia.");
         offsets.current[topic] = data.nextOffset ?? offset + (data.items?.length ?? 7);
         if (data.nextOffset == null) exhausted.current.add(topic);
-        for (const story of data.items ?? []) if (!known.current.has(story.id)) { known.current.add(story.id); batch.push(story); }
+        for (const story of data.items ?? []) if (isViableFeedStory(story) && !known.current.has(story.id)) { known.current.add(story.id); batch.push(story); }
       }
       if (batch.length) {
         cachedStories.current = [...cachedStories.current, ...batch].filter((item, index, all) => all.findIndex((candidate) => candidate.id === item.id) === index).slice(-40);
@@ -342,40 +378,47 @@ function FeedScreen({ stories: _stories, allStories: _allStories, preferredTopic
 
 function FeedStory({ story, active, state, onOpen, onLike, onSave, onSkip, onRelated }: { story: Story; index?: number; active: boolean; state: ReaderState; onOpen: () => void; onLike: () => void; onSave: () => void; onSkip: () => void; onRelated: () => void }) {
   const [images, setImages] = useState(story.galleryImages?.length ? story.galleryImages : [{ url: story.imageUrl, caption: story.title }]);
+  const [articleText, setArticleText] = useState<string[] | null>(null);
   const [imageIndex, setImageIndex] = useState(0);
   const carouselRef = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!active || !story.id.startsWith("wiki-")) return;
     const controller = new AbortController();
-    void fetch(`/api/wiki/media?title=${encodeURIComponent(story.title)}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : null).then((data: { items?: Array<{ url: string; caption: string }> } | null) => {
+    void fetch(`/api/wiki/media?title=${encodeURIComponent(story.title)}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : null).then((data: { items?: Array<{ url: string; caption: string; lead?: boolean }> } | null) => {
       if (!data?.items?.length) return;
       const lead = story.galleryImages?.[0] ?? (story.imageUrl.includes("photo-1519681393784") ? null : { url: story.imageUrl, caption: story.title });
-      const unique = [...(lead ? [lead] : []), ...data.items].filter((image, imagePosition, array) => array.findIndex((candidate) => candidate.url === image.url) === imagePosition).slice(0, 8);
+      const unique = [...(lead ? [lead] : []), ...data.items.filter((image) => !image.lead)].filter((image, imagePosition, array) => array.findIndex((candidate) => candidate.url === image.url) === imagePosition).slice(0, 8);
       setImages(unique);
+    }).catch(() => undefined);
+    void fetch(`/api/wiki/article?title=${encodeURIComponent(story.title)}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : null).then((data: { paragraphs?: string[] } | null) => {
+      if (data?.paragraphs?.length) setArticleText(data.paragraphs);
     }).catch(() => undefined);
     return () => controller.abort();
   }, [active, story.id, story.title, story.imageUrl]);
   const factSlides = useMemo(() => {
-    const text = [...story.body, story.summary].join(" ").replace(/\s+/g, " ");
-    const sentences = text.match(/[^.!?]+[.!?]+(?=\s|$)/g)?.map((sentence) => sentence.trim()) ?? [];
-    const summaryKey = story.summary.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-    const candidates = sentences.filter((sentence) => {
-      const key = sentence.toLocaleLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
-      return key && key !== summaryKey && sentence.length >= 48 && sentence.length <= 360;
-    });
-    const remaining = [...candidates];
-    return images.flatMap((image, imagePosition) => {
-      if (!remaining.length) return imagePosition === 0 ? [{ image, fact: story.summary }] : [];
-      const captionWords = new Set((image.caption + " " + story.title).toLocaleLowerCase().match(/[a-z0-9]{4,}/g) ?? []);
-      const stopWords = new Set(["that", "this", "with", "from", "into", "were", "their", "there", "about", "which", "when", "what", "have", "been", "also", "only"]);
-      const score = (sentence: string) => (sentence.toLocaleLowerCase().match(/[a-z0-9]{4,}/g) ?? []).reduce((total, word) => total + (!stopWords.has(word) && captionWords.has(word) ? 1 : 0), 0);
-      let best = 0;
-      for (let index = 1; index < remaining.length; index += 1) if (score(remaining[index]!) > score(remaining[best]!)) best = index;
-      const fact = remaining.splice(best, 1)[0];
-      return fact ? [{ image, fact }] : [];
-    });
-  }, [images, story.body, story.summary, story.title]);
+    const passages = microPassages(articleText ?? story.body, story.summary);
+    const lead = images[0] ?? { url: story.imageUrl, caption: story.title };
+    const first = passages.find((passage) => passage.paragraphIndex === 0) ?? passages[0]!;
+    const slides = [{ image: lead, fact: first.text }];
+    const usedParagraphs = new Set([first.paragraphIndex]);
+    for (const image of images.slice(1)) {
+      if (slides.length === 5) break;
+      let best = -1;
+      let bestScore = 0;
+      for (let index = 0; index < passages.length; index += 1) {
+        if (usedParagraphs.has(passages[index]!.paragraphIndex)) continue;
+        const score = imageTextOverlap(image.caption, passages[index]!.text, story.title);
+        if (score > bestScore) { best = index; bestScore = score; }
+      }
+      if (best < 0) continue;
+      const matched = passages[best]!;
+      usedParagraphs.add(matched.paragraphIndex);
+      slides.push({ image, fact: matched.text });
+    }
+    return slides.map((slide) => ({ ...slide, ...splitMicroPassage(slide.fact) }));
+  }, [articleText, images, story.body, story.summary, story.title, story.imageUrl]);
   const activeFact = factSlides[imageIndex]?.fact ?? story.summary;
+  const feedReadMinutes = Math.max(1, Math.ceil(factSlides.reduce((words, slide) => words + slide.fact.split(/\s+/).length, 0) / 180));
   async function shareStory() {
     const shareData = { title: story.title, text: activeFact, url: story.source.url };
     try {
@@ -385,10 +428,10 @@ function FeedStory({ story, active, state, onOpen, onLike, onSave, onSkip, onRel
   }
   return <article className={`feed-slide story-card story-card--${story.topic.toLowerCase()}`} data-story-id={story.id}>
     <div className="fact-panel-carousel" ref={carouselRef} onScroll={(event) => { const node = event.currentTarget; setImageIndex(Math.round(node.scrollLeft / node.clientWidth)); }} aria-label={`${story.title} fact slides`}>
-      {factSlides.map(({ image, fact }, panelIndex) => <section className="feed-panel" key={`${image.url}-${panelIndex}`} aria-label={`Fact ${panelIndex + 1} of ${factSlides.length}`}>
+      {factSlides.map(({ image, lead, detail }, panelIndex) => <section className="feed-panel" key={`${image.url}-${panelIndex}`} aria-label={`Fact ${panelIndex + 1} of ${factSlides.length}`}>
         <div className="feed-slide-media"><figure className="feed-image" aria-label={image.caption}><img src={image.url} alt={image.caption || story.imageAlt} loading={panelIndex === 0 ? "eager" : "lazy"}/></figure></div>
-        <div className="feed-slide-copy"><div className="feed-slide-heading"><TopicTag topic={story.topic}/><span className="feed-source">{story.source.label.split(" · ")[0]}</span></div><h2>{panelIndex === 0 ? story.title : shortImageCaption(image.caption) || story.title}</h2><p className="feed-detail" key={panelIndex}>{fact}</p>
-          <div className="feed-slide-footer"><span className="story-meta"><Icon name="clock" size={14}/>{story.readMinutes} min read</span><a href={story.source.url} target="_blank" rel="noreferrer">Source: Wikipedia</a></div>
+        <div className="feed-slide-copy"><div className="feed-slide-heading"><TopicTag topic={story.topic}/><span className="feed-source">{story.source.label.split(" · ")[0]}</span></div><h2>{story.title}</h2>{lead && <p className="feed-learning-lead">{lead}</p>}<p className="feed-detail" key={panelIndex}>{detail}</p>
+          <div className="feed-slide-footer"><span className="story-meta"><Icon name="clock" size={14}/>{feedReadMinutes} min read</span><a href={story.source.url} target="_blank" rel="noreferrer">Source: Wikipedia</a></div>
         </div>
       </section>)}
     </div>

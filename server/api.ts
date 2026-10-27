@@ -142,7 +142,7 @@ async function discoverPages(query: string, limit: number, offset: number) {
 function toStory(page: WikiPage, topic: Topic) {
   const extract = page.extract?.trim() ?? "";
   const body = extract.split(/\n\s*\n/).map((part) => part.trim()).filter(Boolean).slice(0, 4);
-  if (!page.pageid || !page.title || !extract || extract.length < 80 || !page.thumbnail?.source) return null;
+  if (!page.pageid || !page.title || !extract || extract.length < 80 || !page.thumbnail?.source || page.title.length > 72 || /^(?:List|Timeline|Index|Outline) of\b/i.test(page.title)) return null;
   const sentences = extract.replace(/\s+/g, " ").match(/[^.!?]+[.!?]+(?=\s|$)/g)?.map((sentence) => sentence.trim()) ?? [];
   const firstSentence = sentences[0];
   return {
@@ -178,44 +178,22 @@ async function pageMedia(title: string) {
     })
     .filter((item): item is { url: string; caption: string; lead: boolean } => Boolean(item))
     .slice(0, 8);
-  if (pageImages.length >= 4) return pageImages;
+  return pageImages;
+}
 
-  const commonsUrl = new URL("/w/api.php", "https://commons.wikimedia.org");
+async function articleParagraphs(title: string) {
+  const upstream = new URL("/w/api.php", wikiBase);
   for (const [key, value] of Object.entries({
-    action: "query", format: "json", generator: "search", gsrsearch: title,
-    gsrnamespace: "6", gsrlimit: "12", prop: "imageinfo", iiprop: "url|extmetadata", iiurlwidth: "1280",
-  })) commonsUrl.searchParams.set(key, value);
-  let commonsPages: Record<string, { title: string; imageinfo?: Array<{ url?: string; thumburl?: string; extmetadata?: Record<string, { value?: string }> }> }> = {};
-  try {
-    const commons = await cachedJson(`commons-media:${title.toLocaleLowerCase()}`, 12 * 60 * 60_000, commonsUrl) as {
-      query?: { pages?: typeof commonsPages };
-    };
-    commonsPages = commons.query?.pages ?? {};
-  } catch {
-    return pageImages;
-  }
-  const terms = title.toLocaleLowerCase().split(/[^a-z0-9]+/).filter((term) => term.length > 2 && !["the", "and", "for", "from", "with", "history"].includes(term));
-  const commonsImages = Object.values(commonsPages)
-    .map((page) => {
-      const info = page.imageinfo?.[0];
-      const url = info?.thumburl ?? info?.url;
-      if (!url) return null;
-      const label = page.title.replace(/^File:/, "").replace(/\.[^.]+$/, "").replace(/_/g, " ");
-      const normalizedLabel = label.toLocaleLowerCase();
-      const relevance = terms.filter((term) => normalizedLabel.includes(term)).length;
-      if (terms.length > 0 && relevance < Math.min(2, terms.length)) return null;
-      const clean = (value?: string) => value?.replace(/<[^>]*>/g, " ").replace(/&nbsp;|&#160;/g, " ").replace(/&amp;/g, "&").replace(/\s+/g, " ").trim();
-      const artist = clean(info?.extmetadata?.Artist?.value);
-      const license = clean(info?.extmetadata?.LicenseShortName?.value);
-      const credit = [label, artist && `Credit: ${artist}`, license].filter(Boolean).join(" · ");
-      return { url, caption: credit, relevance };
-    })
-    .filter((image): image is { url: string; caption: string; relevance: number } => Boolean(image))
-    .sort((a, b) => b.relevance - a.relevance)
-    .map(({ url, caption }) => ({ url, caption }));
-  return [...pageImages, ...commonsImages]
-    .filter((image, index, all) => all.findIndex((candidate) => candidate.url === image.url) === index)
-    .slice(0, 8);
+    action: "query", format: "json", prop: "extracts", titles: title,
+    explaintext: "1", exsectionformat: "plain", redirects: "1",
+  })) upstream.searchParams.set(key, value);
+  const result = await cachedJson(`wiki-article:${title.toLocaleLowerCase()}`, 12 * 60 * 60_000, upstream) as {
+    query?: { pages?: Record<string, { extract?: string }> };
+  };
+  const extract = Object.values(result.query?.pages ?? {})[0]?.extract ?? "";
+  return extract.slice(0, 30000).split(/\n+/).map((paragraph) => paragraph.replace(/\s+/g, " ").trim())
+    .filter((paragraph) => paragraph.split(/\s+/).length >= 24 && /[.!?:]$/.test(paragraph))
+    .slice(0, 80);
 }
 
 async function handle(request: IncomingMessage, response: ServerResponse) {
@@ -284,6 +262,11 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
     const title = url.searchParams.get("title")?.trim();
     if (!title || title.length > 180) throw new ApiError(400, "Provide a valid Wikipedia page title.");
     return sendJson(response, 200, { items: await pageMedia(title), source: "Wikipedia" });
+  }
+  if (request.method === "GET" && url.pathname === "/api/wiki/article") {
+    const title = url.searchParams.get("title")?.trim();
+    if (!title || title.length > 180) throw new ApiError(400, "Provide a valid Wikipedia page title.");
+    return sendJson(response, 200, { paragraphs: await articleParagraphs(title), source: "Wikipedia" });
   }
   if (request.method === "GET" && url.pathname === "/api/wiki/page") {
     const title = url.searchParams.get("title")?.trim();
