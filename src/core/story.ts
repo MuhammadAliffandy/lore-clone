@@ -19,6 +19,7 @@ export type Story = {
   readMinutes: number;
   imageUrl: string;
   imageAlt: string;
+  galleryImages?: Array<{ url: string; caption: string }>;
   source: StorySource;
 };
 

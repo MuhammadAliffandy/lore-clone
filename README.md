@@ -4,11 +4,13 @@ Rekonstruksi pengalaman **Lore: Daily Facts & Learning**, dengan layar HP sebaga
 
 ## Yang sudah bisa digunakan
 
-- Onboarding minat, feed cerita, reader, bookmark/like, profil, dan Math Blitz.
-- Feed diranking lokal dari topik, cerita yang sudah dibaca, like, save, dan skip.
-- Pencarian artikel Wikipedia live di tab Explore. Pilih hasil untuk membuka ringkasan beratribusi di reader.
-- API lokal menyediakan katalog, feed, proxy Wikipedia dengan cache, dan penyimpanan state reader berbasis JSON.
-- Layout mobile-first, termasuk navigasi bawah dan layout yang tetap muat pada viewport sempit.
+- Onboarding minat, feed fakta vertikal dengan infinite loading, reader, bookmark/like, profil, dan Math Blitz.
+- Tiap kartu feed memakai vertical scroll snap; galeri foto Wikipedia dapat di-swipe horizontal.
+- Feed mengambil ringkasan dan foto live dari Wikipedia berdasarkan minat, dengan sumber dan atribusi di setiap kartu.
+- Tema gelap dapat diubah dari header dan tersimpan di browser.
+- Pencarian Wikipedia live memakai hasil halaman yang relevan dan membuka ringkasan beratribusi di reader.
+- API lokal menyediakan katalog, ranker, proxy Wikipedia dengan cache, dan state reader berbasis JSON. Route serverless `/api/[...path]` tersedia untuk Vercel.
+- Layout mobile-first dengan navigasi bawah, safe area, dan kartu yang mengisi ruang baca pada layar ponsel.
 
 Service lokal ini adalah arsitektur clone. Ia bukan klaim bahwa Lore menggunakan service internal yang sama. Integrasi login, langganan, analytics, dan sinkronisasi cloud belum diaktifkan.
 
@@ -21,7 +23,7 @@ npm run dev
 
 Buka `http://127.0.0.1:5173`. `npm run dev` menjalankan API di port 8787 dan Vite di port 5173. Build produksi: `npm run build`. Untuk menyajikan bundle produksi bersama API lokal: `npm run build && npm run serve`.
 
-Set `WIKIMEDIA_USER_AGENT` di `.env` menggunakan URL proyek atau kontak maintainer yang nyata sebelum pemakaian Wikimedia berkelanjutan. Contoh variabel tersedia di `.env.example`. Artikel hasil pencarian diambil lewat endpoint resmi Wikipedia, disimpan di cache server sementara, dan mempertahankan tautan sumber serta atribusi CC BY-SA 4.0.
+`WIKIMEDIA_USER_AGENT` memakai URL repository sebagai identitas default. Atur di `.env` dengan URL proyek atau kontak maintainer yang nyata sebelum pemakaian Wikimedia berkelanjutan. Artikel dan galeri diambil lewat API Wikipedia, disimpan pada cache proses sementara, dan mempertahankan tautan sumber serta atribusi CC BY-SA 4.0. Preferensi tema dan aktivitas membaca disimpan di browser; state API server lokal menggunakan JSON, sedangkan state API serverless Vercel masih bersifat sementara per proses.
 
 ## Endpoint lokal
 
@@ -30,6 +32,8 @@ Set `WIKIMEDIA_USER_AGENT` di `.env` menggunakan URL proyek atau kontak maintain
 - `GET /api/feed`
 - `GET|PUT /api/reader-state`
 - `GET /api/wiki/search?q=...`
+- `GET /api/wiki/discover?topic=Science&offset=0`
+- `GET /api/wiki/media?title=...`
 - `GET /api/wiki/page?title=...`
 
 File inti: `src/core/story.ts` (domain dan pembaruan state), `src/core/rankFeed.ts` (ranker transparan), `src/core/persistence.ts` (penyimpanan browser), `src/content/stories.ts` (cerita kurasi awal), dan `server/api.ts` (service API lokal).

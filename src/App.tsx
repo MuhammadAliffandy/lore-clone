@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useReducer, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { stories } from "./content/stories";
 import { currentStory, initialFlowState, reduceFlow, type AppScreen } from "./core/flow";
 import { loadReaderState, saveReaderState } from "./core/persistence";
@@ -46,6 +46,7 @@ function TopicTag({ topic }: { topic: Topic }) {
 }
 
 function App() {
+  const [theme, setTheme] = useState<"light" | "dark">(() => window.localStorage.getItem("lore-clone.theme") === "dark" ? "dark" : "light");
   const [didOnboard, setDidOnboard] = useState(() => window.localStorage.getItem("lore-clone.onboarded") === "yes");
   const [reader, setReader] = useState<ReaderState>(() => {
     const loaded = loadReaderState();
@@ -67,6 +68,11 @@ function App() {
   const story = currentStory(flow, catalog);
 
   useEffect(() => saveReaderState(reader), [reader]);
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    window.localStorage.setItem("lore-clone.theme", theme);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#171914" : "#f4f2ed");
+  }, [theme]);
   useEffect(() => {
     let active = true;
     void fetch("/api/stories").then((response) => response.ok ? response.json() : null).then((data: { items?: Story[] } | null) => {
@@ -130,11 +136,13 @@ function App() {
   }
 
   function toggleLike(item: Story) {
+    setCatalog((current) => current.some((entry) => entry.id === item.id) ? current : [...current, item]);
     send({ type: "like", storyId: item.id });
     setNotice(reader.likedIds.includes(item.id) ? "Removed from liked stories" : "Added to liked stories");
   }
 
   function toggleSave(item: Story) {
+    setCatalog((current) => current.some((entry) => entry.id === item.id) ? current : [...current, item]);
     send({ type: "save", storyId: item.id });
     setNotice(reader.savedIds.includes(item.id) ? "Removed from your library" : "Saved for later");
   }
@@ -155,7 +163,7 @@ function App() {
   const title = flow.screen === "feed" ? "Today’s read" : flow.screen === "library" ? "Your library" : flow.screen === "profile" ? "Your space" : "Explore";
 
   return (
-    <div className="app-frame">
+    <div className="app-frame" data-theme={theme}>
       {flow.screen !== "onboarding" && <aside className="desktop-rail">
         <a className="brand" href="#today" onClick={(event) => { event.preventDefault(); navigate("feed"); }} aria-label="Lore home"><span className="brand-mark"><span /></span><span>lore</span></a>
         <div className="rail-section-label">YOUR SPACE</div>
@@ -171,12 +179,12 @@ function App() {
         {flow.screen !== "onboarding" && flow.screen !== "reader" && <header className="topbar">
           <div className="mobile-brand"><span className="brand-mark"><span /></span><span>lore</span></div>
           <div className="topbar-context"><span className="topbar-eyebrow">A LITTLE MORE CURIOUS, EVERY DAY</span><strong>{title}</strong></div>
-          <div className="topbar-right"><button className="icon-button theme-toggle" aria-label="Theme: light" title="Light mode"><Icon name="sun" size={18}/></button><button className="avatar avatar-button" aria-label="Open your profile" onClick={() => navigate("profile")}>A</button></div>
+          <div className="topbar-right"><button className="icon-button theme-toggle" aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`} title={`${theme === "light" ? "Dark" : "Light"} mode`} aria-pressed={theme === "dark"} onClick={() => setTheme((value) => value === "light" ? "dark" : "light")}><Icon name="sun" size={18}/></button><button className="avatar avatar-button" aria-label="Open your profile" onClick={() => navigate("profile")}>A</button></div>
         </header>}
 
         <main className={`main-content screen-${flow.screen}`}>
           {flow.screen === "onboarding" && <Onboarding selected={reader.selectedTopics} onToggle={updateTopics} onContinue={finishOnboarding}/>}
-          {flow.screen === "feed" && <FeedScreen stories={visibleStories} allStories={feed} state={reader} activeFilter={activeFilter} onFilter={setActiveFilter} onOpen={(item) => openStory(item, "feed")} onLike={toggleLike} onSave={toggleSave} onSkip={skipStory} onExplore={() => navigate("games")}/>}
+          {flow.screen === "feed" && <FeedScreen stories={visibleStories} allStories={feed} preferredTopics={reader.selectedTopics.length ? reader.selectedTopics : [...TOPICS]} state={reader} activeFilter={activeFilter} onFilter={setActiveFilter} onOpen={(item) => openStory(item, "feed")} onLike={toggleLike} onSave={toggleSave} onSkip={skipStory} onExplore={() => navigate("games")}/>}
           {flow.screen === "reader" && story && <ReaderScreen story={story} catalog={catalog} state={reader} onBack={() => dispatchFlow({ type: "close-reader" })} onLike={() => toggleLike(story)} onSave={() => toggleSave(story)} onComplete={() => finishStory(story)} onOpenRelated={(item) => openStory(item, "reader")}/>}
           {flow.screen === "library" && <LibraryScreen catalog={catalog} state={reader} onOpen={(item) => openStory(item, "library")} onLike={toggleLike} onSave={toggleSave} onFindStories={() => navigate("feed")}/>}
           {flow.screen === "profile" && <ProfileScreen catalog={catalog} state={reader} onTopics={() => setShowAllTopics((value) => !value)} showTopics={showAllTopics} onToggleTopic={updateTopics} onOpenSaved={() => navigate("library")} onOpenStory={(item) => openStory(item, "profile")}/>}
@@ -200,22 +208,137 @@ function Onboarding({ selected, onToggle, onContinue }: { selected: Topic[]; onT
   </section>;
 }
 
-function FeedScreen({ stories: visible, allStories, state, activeFilter, onFilter, onOpen, onLike, onSave, onSkip, onExplore }: { stories: Story[]; allStories: Story[]; state: ReaderState; activeFilter: Topic | "All"; onFilter: (topic: Topic | "All") => void; onOpen: (story: Story) => void; onLike: (story: Story) => void; onSave: (story: Story) => void; onSkip: (story: Story) => void; onExplore: () => void }) {
-  const next = visible[0];
+function FeedScreen({ stories: fallbackStories, allStories: _allStories, preferredTopics, state, activeFilter, onFilter, onOpen, onLike, onSave, onSkip, onExplore }: { stories: Story[]; allStories: Story[]; preferredTopics: Topic[]; state: ReaderState; activeFilter: Topic | "All"; onFilter: (topic: Topic | "All") => void; onOpen: (story: Story) => void; onLike: (story: Story) => void; onSave: (story: Story) => void; onSkip: (story: Story) => void; onExplore: () => void }) {
+  const topics = activeFilter === "All" ? preferredTopics : [activeFilter];
+  const [items, setItems] = useState<Story[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [activeId, setActiveId] = useState("");
+  const [hasMore, setHasMore] = useState(true);
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+  const offsets = useRef<Record<string, number>>({});
+  const exhausted = useRef(new Set<string>());
+  const position = useRef(0);
+  const seen = useRef(new Set<string>());
+  const loadingRef = useRef(false);
+  const generation = useRef(0);
+  const topicsRef = useRef(topics);
+  const fallbackRef = useRef(fallbackStories);
+  topicsRef.current = topics;
+  fallbackRef.current = fallbackStories;
+  const topicKey = topics.join("|");
+
+  useEffect(() => {
+    generation.current += 1;
+    setItems([]); setError(""); setHasMore(true); setActiveId("");
+    offsets.current = {}; exhausted.current = new Set(); position.current = 0; seen.current = new Set(); loadingRef.current = false;
+    scrollRef.current?.scrollTo({ top: 0 });
+  }, [topicKey]);
+
+  const loadMore = useCallback(async () => {
+    if (loadingRef.current || topicsRef.current.length === 0) return;
+    const requestGeneration = generation.current;
+    loadingRef.current = true; setLoading(true); setError("");
+    try {
+      const batch: Story[] = [];
+      let attempts = 0;
+      while (batch.length < 7 && attempts < topicsRef.current.length * 2) {
+        const currentTopics = topicsRef.current;
+        const topic = currentTopics[position.current % currentTopics.length]!;
+        position.current += 1; attempts += 1;
+        if (exhausted.current.has(topic)) continue;
+        const offset = offsets.current[topic] ?? 0;
+        const response = await fetch(`/api/wiki/discover?topic=${encodeURIComponent(topic)}&offset=${offset}`);
+        const data = await response.json() as { items?: Story[]; nextOffset?: number | null; error?: string };
+        if (requestGeneration !== generation.current) return;
+        if (!response.ok) throw new Error(data.error ?? "Could not load facts from Wikipedia.");
+        offsets.current[topic] = data.nextOffset ?? offset + (data.items?.length ?? 7);
+        if (data.nextOffset == null) exhausted.current.add(topic);
+        for (const story of data.items ?? []) if (!seen.current.has(story.id)) { seen.current.add(story.id); batch.push(story); }
+      }
+      if (batch.length) setItems((current) => [...current, ...batch]);
+      else if (topicsRef.current.every((topic) => exhausted.current.has(topic))) {
+        const remaining = fallbackRef.current.filter((item) => !seen.current.has(item.id));
+        remaining.forEach((item) => seen.current.add(item.id));
+        if (remaining.length) setItems((current) => [...current, ...remaining]);
+        else setHasMore(false);
+      }
+    } catch (reason) { if (requestGeneration === generation.current) setError(reason instanceof Error ? reason.message : "Feed could not load."); }
+    finally { if (requestGeneration === generation.current) { loadingRef.current = false; setLoading(false); } }
+  }, []);
+
+  useEffect(() => { void loadMore(); }, [loadMore, topicKey]);
+  useEffect(() => {
+    const sentinel = sentinelRef.current; const root = scrollRef.current;
+    if (!sentinel || !root || !hasMore) return;
+    const observer = new IntersectionObserver((entries) => { if (entries.some((entry) => entry.isIntersecting)) void loadMore(); }, { root, rootMargin: "900px 0px" });
+    observer.observe(sentinel); return () => observer.disconnect();
+  }, [hasMore, loadMore, items.length]);
+  useEffect(() => {
+    const root = scrollRef.current;
+    if (!root) return;
+    const observer = new IntersectionObserver((entries) => {
+      const current = entries.filter((entry) => entry.isIntersecting).sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+      if (current) setActiveId((current.target as HTMLElement).dataset.storyId ?? "");
+    }, { root, threshold: [0.35, 0.6, 0.85] });
+    root.querySelectorAll("[data-story-id]").forEach((node) => observer.observe(node));
+    return () => observer.disconnect();
+  }, [items]);
+
   const today = new Intl.DateTimeFormat("en-US", { weekday: "long", month: "long", day: "numeric" }).format(new Date());
-  return <div className="feed-layout"><div className="feed-intro"><div><span className="eyebrow date-eyebrow">{today.toUpperCase()}</span><h1>A fresh little <em>discovery.</em></h1><p>One good story can change your whole day.</p></div><div className="daily-progress"><span className="progress-ring"><span>✳</span></span><div><strong>{state.completedIds.length} stories</strong><small>read in total</small></div></div></div>
+  return <div className="feed-layout doom-feed"><div className="feed-intro"><div><span className="eyebrow date-eyebrow">{today.toUpperCase()}</span><h1>A fresh little <em>discovery.</em></h1><p>Scroll into something new. One small fact at a time.</p></div><div className="daily-progress"><span className="progress-ring"><span>✳</span></span><div><strong>{state.completedIds.length} stories</strong><small>read in total</small></div></div></div>
     <div className="filter-row" role="tablist" aria-label="Filter stories by topic">{["All", ...TOPICS].map((topic) => <button key={topic} role="tab" aria-selected={activeFilter === topic} className={`filter-chip ${activeFilter === topic ? "active" : ""}`} onClick={() => onFilter(topic as Topic | "All")}>{topic}</button>)}</div>
-    {next ? <><article className={`story-card story-card--${next.topic.toLowerCase()}`}><button className="story-image-button" onClick={() => onOpen(next)} aria-label={`Read ${next.title}`}><img src={next.imageUrl} alt={next.imageAlt}/><span className="image-gradient"/><span className="image-badge"><Icon name="sparkle" size={13}/> TODAY’S STORY</span><span className="image-count">{String(allStories.findIndex((item) => item.id === next.id) + 1).padStart(2, "0")} <i>/</i> {String(allStories.length).padStart(2, "0")}</span></button><div className="story-card-body"><div className="story-copy"><TopicTag topic={next.topic}/><h2><button onClick={() => onOpen(next)}>{next.title}</button></h2><p>{next.summary}</p><div className="story-meta"><span><Icon name="clock" size={14}/>{next.readMinutes} min read</span><span className="meta-divider"/><span>From {next.source.label.split(" · ")[0]}</span></div></div><div className="story-actions"><button className={`action-button ${state.likedIds.includes(next.id) ? "is-liked" : ""}`} aria-label={state.likedIds.includes(next.id) ? "Unlike story" : "Like story"} aria-pressed={state.likedIds.includes(next.id)} onClick={() => onLike(next)}><Icon name="heart" size={19} filled={state.likedIds.includes(next.id)}/></button><button className={`action-button ${state.savedIds.includes(next.id) ? "is-saved" : ""}`} aria-label={state.savedIds.includes(next.id) ? "Remove from saved" : "Save story"} aria-pressed={state.savedIds.includes(next.id)} onClick={() => onSave(next)}><Icon name="bookmark" size={18} filled={state.savedIds.includes(next.id)}/></button><button className="action-button skip-action" aria-label="Skip this story" onClick={() => onSkip(next)}><Icon name="arrow-right" size={19}/></button></div><button className="read-story-button" onClick={() => onOpen(next)}>Read the story <span><Icon name="arrow-right" size={16}/></span></button></div></article>
-      <div className="feed-bottom-row"><div className="next-up"><span className="next-up-icon"><Icon name="sparkle" size={17}/></span><span><strong>There’s always more to wonder about.</strong><small>Your next read is waiting in Explore.</small></span></div><button className="text-link" onClick={onExplore}>Explore all <Icon name="arrow-right" size={15}/></button></div>
-      {visible.length > 1 && <section className="more-reads"><div className="section-heading"><div><span className="eyebrow">KEEP FOLLOWING THAT THREAD</span><h2>A few more for you</h2></div><span className="subtle-count">{visible.length - 1} stories</span></div><div className="mini-story-list">{visible.slice(1).map((item) => <StoryRow key={item.id} story={item} onClick={() => onOpen(item)}/>)}</div></section>}
-    </> : <div className="empty-state"><span className="empty-art"><Icon name="sparkle" size={27}/></span><h2>{allStories.length ? "No reads in this topic yet." : "You’re all caught up."}</h2><p>{allStories.length ? "Try another interest to find your next little discovery." : "Your next story will be ready soon. For now, explore the library."}</p><button className="secondary-button" onClick={() => onFilter("All")}>{allStories.length ? "Show all stories" : "Explore stories"}</button></div>}
+    <div className="feed-scroll" ref={scrollRef} aria-label="Endless fact feed">{items.map((item, index) => <FeedStory key={`${topicKey}-${item.id}`} story={item} index={index} active={activeId === item.id || (!activeId && index === 0)} state={state} onOpen={() => onOpen(item)} onLike={() => onLike(item)} onSave={() => onSave(item)} onSkip={() => { onSkip(item); const next = scrollRef.current?.querySelectorAll<HTMLElement>("[data-story-id]")[index + 1]; next?.scrollIntoView({ behavior: "smooth", block: "start" }); if (!next) void loadMore(); }}/>)}
+      <div ref={sentinelRef} className="feed-sentinel" aria-hidden="true"/>
+      {loading && <div className="feed-state" role="status">Finding another fact…</div>}
+      {error && <div className="feed-state feed-error" role="alert"><span>{error}</span><button className="secondary-button" onClick={() => void loadMore()}>Try again</button></div>}
+      {!hasMore && items.length > 0 && <div className="feed-state">That’s the last card for now. <button className="text-link" onClick={onExplore}>Explore a topic</button></div>}
+      {!items.length && !loading && !error && <div className="feed-state">No articles found for this topic yet.</div>}
+    </div>
   </div>;
+}
+
+function FeedStory({ story, index, active, state, onOpen, onLike, onSave, onSkip }: { story: Story; index: number; active: boolean; state: ReaderState; onOpen: () => void; onLike: () => void; onSave: () => void; onSkip: () => void }) {
+  const [images, setImages] = useState(story.galleryImages?.length ? story.galleryImages : [{ url: story.imageUrl, caption: story.title }]);
+  const [imageIndex, setImageIndex] = useState(0);
+  const carouselRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!active || !story.id.startsWith("wiki-")) return;
+    const controller = new AbortController();
+    void fetch(`/api/wiki/media?title=${encodeURIComponent(story.title)}`, { signal: controller.signal }).then((response) => response.ok ? response.json() : null).then((data: { items?: Array<{ url: string; caption: string }> } | null) => {
+      if (!data?.items?.length) return;
+      const lead = story.galleryImages?.[0] ?? (story.imageUrl.includes("photo-1519681393784") ? null : { url: story.imageUrl, caption: story.title });
+      const unique = [...(lead ? [lead] : []), ...data.items].filter((image, imagePosition, array) => array.findIndex((candidate) => candidate.url === image.url) === imagePosition).slice(0, 8);
+      setImages(unique);
+    }).catch(() => undefined);
+    return () => controller.abort();
+  }, [active, story.id, story.title, story.imageUrl]);
+  function moveImage(direction: number) {
+    const next = Math.max(0, Math.min(images.length - 1, imageIndex + direction));
+    carouselRef.current?.children[next]?.scrollIntoView({ behavior: "smooth", inline: "start", block: "nearest" });
+    setImageIndex(next);
+  }
+  const articleContext = story.body[0]?.replace(story.summary, "").replace(/\s+/g, " ").trim();
+  return <article className={`feed-slide story-card story-card--${story.topic.toLowerCase()}`} data-story-id={story.id}>
+    <div className="feed-slide-media"><div className="feed-carousel" ref={carouselRef} onScroll={(event) => { const node = event.currentTarget; setImageIndex(Math.round(node.scrollLeft / node.clientWidth)); }} aria-label={`${story.title} images`}>
+      {images.map((image, imagePosition) => <figure className="feed-image" key={`${image.url}-${imagePosition}`}><img src={image.url} alt={image.caption || story.imageAlt} loading={imagePosition === 0 ? "eager" : "lazy"}/><figcaption>{image.caption}</figcaption></figure>)}
+    </div><span className="image-gradient"/><span className="image-badge"><Icon name="sparkle" size={13}/> FACT {String(index + 1).padStart(2, "0")}</span>
+      {images.length > 1 && <><div className="image-count">{imageIndex + 1} <i>/</i> {images.length}</div><button className="carousel-arrow carousel-prev" aria-label="Previous photo" onClick={() => moveImage(-1)} disabled={imageIndex === 0}><Icon name="arrow-left" size={18}/></button><button className="carousel-arrow carousel-next" aria-label="Next photo" onClick={() => moveImage(1)} disabled={imageIndex === images.length - 1}><Icon name="arrow-right" size={18}/></button><div className="carousel-dots" aria-hidden="true">{images.map((_, dot) => <i key={dot} className={dot === imageIndex ? "active" : ""}/>)}</div></>}
+      <span className="feed-swipe-hint">Swipe for more photos</span>
+    </div>
+    <div className="feed-slide-copy"><div className="feed-slide-heading"><TopicTag topic={story.topic}/><span className="feed-source">{story.source.label.split(" · ")[0]}</span></div><h2>{story.title}</h2><p className="feed-fact">{story.summary}</p>{articleContext && <p className="feed-detail">{articleContext}</p>}
+      <div className="feed-slide-footer"><span className="story-meta"><Icon name="clock" size={14}/>{story.readMinutes} min read</span><a href={story.source.url} target="_blank" rel="noreferrer">Source: Wikipedia</a></div>
+      <div className="feed-slide-actions"><button className={`action-button ${state.likedIds.includes(story.id) ? "is-liked" : ""}`} aria-label={state.likedIds.includes(story.id) ? "Unlike story" : "Like story"} aria-pressed={state.likedIds.includes(story.id)} onClick={onLike}><Icon name="heart" size={19} filled={state.likedIds.includes(story.id)}/></button><button className={`action-button ${state.savedIds.includes(story.id) ? "is-saved" : ""}`} aria-label={state.savedIds.includes(story.id) ? "Remove from saved" : "Save story"} aria-pressed={state.savedIds.includes(story.id)} onClick={onSave}><Icon name="bookmark" size={18} filled={state.savedIds.includes(story.id)}/></button><button className="read-story-button" onClick={onOpen}>Read the full story <Icon name="arrow-right" size={16}/></button><button className="skip-feed-button" onClick={onSkip}>Skip</button></div>
+    </div>
+  </article>;
 }
 
 function ReaderScreen({ story, catalog, state, onBack, onLike, onSave, onComplete, onOpenRelated }: { story: Story; catalog: Story[]; state: ReaderState; onBack: () => void; onLike: () => void; onSave: () => void; onComplete: () => void; onOpenRelated: (story: Story) => void }) {
   const related = catalog.filter((item) => item.id !== story.id && item.topic === story.topic).slice(0, 2);
   const relatedStories = (related.length ? related : catalog.filter((item) => item.id !== story.id)).slice(0, 2);
-  return <article className="reader-page"><div className="reader-toolbar"><button className="back-button" onClick={onBack}><Icon name="arrow-left" size={18}/><span>Back to today</span></button><span className="reader-toolbar-right"><span><Icon name="clock" size={14}/>{story.readMinutes} min</span><button className="icon-button" aria-label="Share story" onClick={() => { void navigator.clipboard?.writeText(window.location.href); }}><Icon name="share" size={17}/></button></span></div><div className="reader-hero"><img src={story.imageUrl} alt={story.imageAlt}/><div className="reader-image-wash"/><div className="reader-hero-label"><TopicTag topic={story.topic}/><span>FIELD NOTE <i>·</i> 01</span></div></div><div className="reader-content"><div className="reader-heading"><span className="eyebrow">A STORY TO TAKE WITH YOU</span><h1>{story.title}</h1><p className="reader-deck">{story.summary}</p><div className="reader-byline"><span className="tiny-avatar">L</span><span>Curated by Lore</span><span className="byline-dot">·</span><span>{story.readMinutes} min read</span></div></div><div className="reader-rule"><span/><i>✳</i><span/></div><div className="article-body">{story.body.map((paragraph, index) => <p key={paragraph} className={index === 0 ? "lead-paragraph" : ""}>{paragraph}</p>)}</div><a className="source-link" href={story.source.url} target="_blank" rel="noreferrer"><span><Icon name="book" size={17}/></span><span><strong>Keep exploring</strong><small>{story.source.attribution ?? `Source: ${story.source.label}`}{story.source.license ? ` · ${story.source.license}` : ""}</small></span><Icon name="arrow-right" size={17}/></a><div className="reader-actions"><button className={`reader-action ${state.likedIds.includes(story.id) ? "is-liked" : ""}`} onClick={onLike}><Icon name="heart" filled={state.likedIds.includes(story.id)} size={18}/>{state.likedIds.includes(story.id) ? "Liked" : "Like"}</button><button className={`reader-action ${state.savedIds.includes(story.id) ? "is-saved" : ""}`} onClick={onSave}><Icon name="bookmark" filled={state.savedIds.includes(story.id)} size={17}/>{state.savedIds.includes(story.id) ? "Saved" : "Save"}</button></div><button className="primary-button finish-button" onClick={onComplete}><span>Finish this story</span><span className="finish-check"><Icon name="check" size={15}/></span></button></div>{relatedStories.length > 0 && <section className="related-section"><div className="section-heading"><div><span className="eyebrow">IF YOU LIKED THIS</span><h2>Follow the thread</h2></div></div><div className="related-list">{relatedStories.map((item) => <StoryRow key={item.id} story={item} onClick={() => onOpenRelated(item)}/>)}</div></section>}</article>;
+  const readingParagraphs = story.body.map((paragraph) => paragraph.replace(story.summary, "").replace(/\s+/g, " ").trim()).filter(Boolean);
+  return <article className="reader-page"><div className="reader-toolbar"><button className="back-button" onClick={onBack}><Icon name="arrow-left" size={18}/><span>Back to today</span></button><span className="reader-toolbar-right"><span><Icon name="clock" size={14}/>{story.readMinutes} min</span><button className="icon-button" aria-label="Share story" onClick={() => { void navigator.clipboard?.writeText(window.location.href); }}><Icon name="share" size={17}/></button></span></div><div className="reader-hero"><img src={story.imageUrl} alt={story.imageAlt}/><div className="reader-image-wash"/><div className="reader-hero-label"><TopicTag topic={story.topic}/><span>FIELD NOTE <i>·</i> 01</span></div></div><div className="reader-content"><div className="reader-heading"><span className="eyebrow">A STORY TO TAKE WITH YOU</span><h1>{story.title}</h1><p className="reader-deck">{story.summary}</p><div className="reader-byline"><span className="tiny-avatar">L</span><span>Curated by Lore</span><span className="byline-dot">·</span><span>{story.readMinutes} min read</span></div></div><div className="reader-rule"><span/><i>✳</i><span/></div><div className="article-body">{readingParagraphs.map((paragraph, index) => <p key={paragraph} className={index === 0 ? "lead-paragraph" : ""}>{paragraph}</p>)}</div><a className="source-link" href={story.source.url} target="_blank" rel="noreferrer"><span><Icon name="book" size={17}/></span><span><strong>Keep exploring</strong><small>{story.source.attribution ?? `Source: ${story.source.label}`}{story.source.license ? ` · ${story.source.license}` : ""}</small></span><Icon name="arrow-right" size={17}/></a><div className="reader-actions"><button className={`reader-action ${state.likedIds.includes(story.id) ? "is-liked" : ""}`} onClick={onLike}><Icon name="heart" filled={state.likedIds.includes(story.id)} size={18}/>{state.likedIds.includes(story.id) ? "Liked" : "Like"}</button><button className={`reader-action ${state.savedIds.includes(story.id) ? "is-saved" : ""}`} onClick={onSave}><Icon name="bookmark" filled={state.savedIds.includes(story.id)} size={17}/>{state.savedIds.includes(story.id) ? "Saved" : "Save"}</button></div><button className="primary-button finish-button" onClick={onComplete}><span>Finish this story</span><span className="finish-check"><Icon name="check" size={15}/></span></button></div>{relatedStories.length > 0 && <section className="related-section"><div className="section-heading"><div><span className="eyebrow">IF YOU LIKED THIS</span><h2>Follow the thread</h2></div></div><div className="related-list">{relatedStories.map((item) => <StoryRow key={item.id} story={item} onClick={() => onOpenRelated(item)}/>)}</div></section>}</article>;
 }
 
 function LibraryScreen({ catalog, state, onOpen, onLike, onSave, onFindStories }: { catalog: Story[]; state: ReaderState; onOpen: (story: Story) => void; onLike: (story: Story) => void; onSave: (story: Story) => void; onFindStories: () => void }) {
