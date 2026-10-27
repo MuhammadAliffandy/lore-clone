@@ -2,15 +2,22 @@ import { createServer, type IncomingMessage, type ServerResponse } from "node:ht
 import { randomUUID } from "node:crypto";
 import { existsSync } from "node:fs";
 import { mkdir, readFile, rename, writeFile } from "node:fs/promises";
-import { loadEnvFile } from "node:process";
+import process from "node:process";
 import { fileURLToPath } from "node:url";
 import { dirname } from "node:path";
 import { stories } from "../src/content/stories.ts";
 import { initialReaderState, TOPICS, type ReaderState, type Topic } from "../src/core/story.ts";
 import { rankFeed } from "../src/core/rankFeed.ts";
 
+const isVercel = Boolean(process.env.VERCEL || process.env.NOW_REGION);
 const envFile = fileURLToPath(new URL("../.env", import.meta.url));
-if (existsSync(envFile)) loadEnvFile(envFile);
+if (!isVercel && existsSync(envFile) && typeof process.loadEnvFile === "function") {
+  try {
+    process.loadEnvFile(envFile);
+  } catch {
+    // Ignore .env loading failure in environments without filesystem access
+  }
+}
 
 const port = Number(process.env.API_PORT ?? 8787);
 const stateFile = fileURLToPath(new URL("../data/reader-state.json", import.meta.url));
@@ -35,7 +42,14 @@ class ApiError extends Error {
 }
 
 function sendJson(response: ServerResponse, status: number, value: unknown, headers: Record<string, string> = {}) {
-  response.writeHead(status, { "content-type": "application/json; charset=utf-8", "cache-control": "no-store", ...headers });
+  response.writeHead(status, {
+    "content-type": "application/json; charset=utf-8",
+    "cache-control": "no-store",
+    "access-control-allow-origin": "*",
+    "access-control-allow-methods": "GET, PUT, OPTIONS",
+    "access-control-allow-headers": "Content-Type",
+    ...headers,
+  });
   response.end(JSON.stringify(value));
 }
 
@@ -53,7 +67,7 @@ async function readBody(request: IncomingMessage): Promise<unknown> {
 }
 
 async function loadReaderState(): Promise<ReaderState> {
-  if (process.env.VERCEL) return vercelReaderState;
+  if (isVercel) return vercelReaderState;
   try {
     const value = JSON.parse(await readFile(stateFile, "utf8")) as Partial<ReaderState>;
     return {
@@ -84,7 +98,7 @@ async function saveReaderState(value: unknown) {
     skippedIds: Array.isArray(input.skippedIds) ? input.skippedIds.filter((id): id is string => typeof id === "string") : [],
     selectedTopics: Array.isArray(input.selectedTopics) ? input.selectedTopics.filter((topic): topic is Topic => TOPICS.includes(topic as Topic)) : [...TOPICS],
   };
-  if (process.env.VERCEL) {
+  if (isVercel) {
     vercelReaderState = state;
     return state;
   }
@@ -197,28 +211,46 @@ async function articleParagraphs(title: string) {
 }
 
 async function handle(request: IncomingMessage, response: ServerResponse) {
-  const url = new URL(request.url ?? "/", `http://${request.headers.host ?? "127.0.0.1"}`);
-  if (request.method === "GET" && url.pathname === "/api/health") {
+  const host = request.headers.host ?? "127.0.0.1";
+  const url = new URL(request.url ?? "/", `http://${host}`);
+  let pathname = url.pathname;
+  if (!pathname.startsWith("/api")) {
+    pathname = `/api${pathname.startsWith("/") ? "" : "/"}${pathname}`;
+  }
+  if (pathname.length > 4 && pathname.endsWith("/")) {
+    pathname = pathname.slice(0, -1);
+  }
+
+  if (request.method === "OPTIONS") {
+    response.writeHead(204, {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET, PUT, OPTIONS",
+      "access-control-allow-headers": "Content-Type",
+    });
+    return response.end();
+  }
+
+  if (request.method === "GET" && (pathname === "/api/health" || pathname === "/api")) {
     return sendJson(response, 200, { status: "ok", services: ["story-catalog", "wikipedia-proxy", "reader-state"] });
   }
-  if (request.method === "GET" && url.pathname === "/api/stories") {
+  if (request.method === "GET" && pathname === "/api/stories") {
     const topic = url.searchParams.get("topic");
     const query = url.searchParams.get("q")?.trim().toLocaleLowerCase();
     const items = stories.filter((story) => (!topic || story.topic === topic) && (!query || `${story.title} ${story.summary} ${story.body.join(" ")}`.toLocaleLowerCase().includes(query)));
     return sendJson(response, 200, { items, count: items.length, source: "curated-catalog" });
   }
-  if (request.method === "GET" && url.pathname === "/api/feed") {
+  if (request.method === "GET" && pathname === "/api/feed") {
     const state = await loadReaderState();
     const items = rankFeed(stories, state);
     return sendJson(response, 200, { items, count: items.length, source: "local-feed-ranker" });
   }
-  if (request.method === "GET" && url.pathname === "/api/reader-state") {
+  if (request.method === "GET" && pathname === "/api/reader-state") {
     return sendJson(response, 200, await loadReaderState());
   }
-  if (request.method === "PUT" && url.pathname === "/api/reader-state") {
+  if (request.method === "PUT" && pathname === "/api/reader-state") {
     return sendJson(response, 200, await saveReaderState(await readBody(request)));
   }
-  if (request.method === "GET" && url.pathname === "/api/wiki/search") {
+  if (request.method === "GET" && pathname === "/api/wiki/search") {
     const query = url.searchParams.get("q")?.trim();
     if (!query || query.length < 2) throw new ApiError(400, "Enter at least two characters to search Wikipedia.");
     if (query.length > 100) throw new ApiError(400, "Search query is too long.");
@@ -239,7 +271,7 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
     });
     return sendJson(response, 200, { pages: normalized, source: "English Wikipedia" });
   }
-  if (request.method === "GET" && url.pathname === "/api/wiki/discover") {
+  if (request.method === "GET" && pathname === "/api/wiki/discover") {
     const requestedTopic = url.searchParams.get("topic") as Topic | null;
     const topic = requestedTopic && TOPICS.includes(requestedTopic) ? requestedTopic : "Science";
     const rawOffset = Number(url.searchParams.get("offset") ?? 0);
@@ -258,17 +290,17 @@ async function handle(request: IncomingMessage, response: ServerResponse) {
       : queryIndex * 1000 + upstreamOffset;
     return sendJson(response, 200, { items, nextOffset, topic, source: "Wikipedia" });
   }
-  if (request.method === "GET" && url.pathname === "/api/wiki/media") {
+  if (request.method === "GET" && pathname === "/api/wiki/media") {
     const title = url.searchParams.get("title")?.trim();
     if (!title || title.length > 180) throw new ApiError(400, "Provide a valid Wikipedia page title.");
     return sendJson(response, 200, { items: await pageMedia(title), source: "Wikipedia" });
   }
-  if (request.method === "GET" && url.pathname === "/api/wiki/article") {
+  if (request.method === "GET" && pathname === "/api/wiki/article") {
     const title = url.searchParams.get("title")?.trim();
     if (!title || title.length > 180) throw new ApiError(400, "Provide a valid Wikipedia page title.");
     return sendJson(response, 200, { paragraphs: await articleParagraphs(title), source: "Wikipedia" });
   }
-  if (request.method === "GET" && url.pathname === "/api/wiki/page") {
+  if (request.method === "GET" && pathname === "/api/wiki/page") {
     const title = url.searchParams.get("title")?.trim();
     if (!title || title.length > 180) throw new ApiError(400, "Provide a valid Wikipedia page title.");
     const upstream = new URL(`/api/rest_v1/page/summary/${encodeURIComponent(title.replaceAll(" ", "_"))}`, wikiBase);
@@ -290,7 +322,8 @@ export async function handleApiRequest(request: IncomingMessage, response: Serve
   });
 }
 
-if (!process.env.VERCEL) {
+const isMain = Boolean(process.argv[1] && (process.argv[1].endsWith("server/api.ts") || process.argv[1].endsWith("server/api")));
+if (!isVercel && isMain) {
   const server = createServer(handleApiRequest);
   server.listen(port, "127.0.0.1", () => {
     console.log(`Lore clone API listening on http://127.0.0.1:${port}`);
